@@ -56,6 +56,37 @@ Next.js + Firebase を使用したTwitterクローンアプリケーションの
 - `src/types/` - TypeScript型定義
 - `doc/` - プロジェクト文書
 
+### UI/UXインタラクション共通仕様
+すべてのクリック可能コンポーネント（ボタン、リンク、クリック可能エリア）には以下を適用：
+
+1. **マウスカーソル指定**
+   - `cursor-pointer` クラスを必須で適用
+   - マウスオン時にカーソルが指マークに変化
+
+2. **ハイライト効果**
+   - ホバー時に視覚的フィードバックを提供
+   - 色変化、透明度変化、スケール変化などを適用
+   - `transition-*` クラスでスムーズなアニメーション
+
+3. **適用例**
+   ```tsx
+   // ボタンの場合
+   className="cursor-pointer hover:bg-blue-600 transition-colors duration-200"
+   
+   // テキストリンクの場合  
+   className="cursor-pointer hover:text-blue-600 transition-colors duration-200"
+   
+   // カード等の場合
+   className="cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200"
+   ```
+
+4. **適用対象**
+   - Button コンポーネント
+   - Link コンポーネント
+   - クリックイベントを持つdiv, span等の要素
+   - ナビゲーション要素
+   - カード型コンポーネント
+
 ### コミット・更新ルール
 - 機能単位でのコミット
 - 分かりやすいコミットメッセージ

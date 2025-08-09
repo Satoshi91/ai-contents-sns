@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { getUserByUsername, getUserPosts } from '@/lib/firebase/firestore';
+import { getUserByUsername, getUserWorks } from '@/lib/firebase/firestore';
 import { User } from '@/types/user';
-import { Post } from '@/types/post';
+import { Work } from '@/types/work';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ProfileDisplay } from '@/components/features/ProfileDisplay';
 import { ProfileEditModal } from '@/components/features/ProfileEditModal';
@@ -21,9 +21,9 @@ export default function ProfilePage() {
   const username = params.username as string;
   
   const [profileUser, setProfileUser] = useState<User | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
-  const [postsLoading, setPostsLoading] = useState(false);
+  const [worksLoading, setWorksLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [lastDoc, setLastDoc] = useState<any>(null);
@@ -36,7 +36,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (profileUser) {
-      loadPosts();
+      loadWorks();
     }
   }, [profileUser]);
 
@@ -58,12 +58,12 @@ export default function ProfilePage() {
     }
   };
 
-  const loadPosts = async (loadMore = false) => {
-    if (!profileUser || postsLoading) return;
+  const loadWorks = async (loadMore = false) => {
+    if (!profileUser || worksLoading) return;
     
-    setPostsLoading(true);
+    setWorksLoading(true);
     try {
-      const result = await getUserPosts(
+      const result = await getUserWorks(
         profileUser.uid,
         10,
         loadMore ? lastDoc : undefined
@@ -71,18 +71,18 @@ export default function ProfilePage() {
       
       if (result.success) {
         if (loadMore) {
-          setPosts(prev => [...prev, ...result.posts]);
+          setWorks(prev => [...prev, ...result.works]);
         } else {
-          setPosts(result.posts);
+          setWorks(result.works);
         }
         setLastDoc(result.lastDoc);
         setHasMore(result.hasMore);
       }
     } catch (error) {
-      console.error('Error loading posts:', error);
-      toast.error('投稿の読み込みに失敗しました');
+      console.error('Error loading works:', error);
+      toast.error('作品の読み込みに失敗しました');
     } finally {
-      setPostsLoading(false);
+      setWorksLoading(false);
     }
   };
 
@@ -124,7 +124,7 @@ export default function ProfilePage() {
                   {profileUser.displayName}
                 </h1>
                 <p className="text-sm text-gray-500">
-                  {posts.length} 投稿
+                  {works.length} 作品
                 </p>
               </div>
             </div>
@@ -135,15 +135,15 @@ export default function ProfilePage() {
           <div className="bg-white rounded-lg shadow">
             <ProfileDisplay
               user={profileUser}
-              posts={posts}
+              works={works}
               isOwnProfile={isOwnProfile}
               onEditClick={() => setIsEditModalOpen(true)}
             />
             
-            {posts.length > 0 && hasMore && !postsLoading && (
+            {works.length > 0 && hasMore && !worksLoading && (
               <div className="p-4 border-t">
                 <Button
-                  onClick={() => loadPosts(true)}
+                  onClick={() => loadWorks(true)}
                   variant="secondary"
                   className="w-full"
                 >
@@ -152,7 +152,7 @@ export default function ProfilePage() {
               </div>
             )}
             
-            {postsLoading && (
+            {worksLoading && (
               <div className="p-8 flex justify-center">
                 <Spinner />
               </div>

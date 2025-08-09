@@ -18,7 +18,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './app';
-import { Post } from '@/types/post';
+import { Work } from '@/types/work';
 import { User } from '@/types/user';
 
 export async function createPost(uid: string, content: string, userData: Partial<User>) {
@@ -107,10 +107,10 @@ export async function getPosts(limitCount: number = 20, lastDoc?: DocumentSnapsh
   }
 }
 
-export async function getUserPosts(uid: string, limitCount: number = 20, lastDoc?: DocumentSnapshot) {
+export async function getUserWorks(uid: string, limitCount: number = 20, lastDoc?: DocumentSnapshot) {
   try {
     let q = query(
-      collection(db, 'posts'),
+      collection(db, 'works'),
       where('uid', '==', uid),
       orderBy('createdAt', 'desc'),
       limit(limitCount)
@@ -118,7 +118,7 @@ export async function getUserPosts(uid: string, limitCount: number = 20, lastDoc
 
     if (lastDoc) {
       q = query(
-        collection(db, 'posts'),
+        collection(db, 'works'),
         where('uid', '==', uid),
         orderBy('createdAt', 'desc'),
         startAfter(lastDoc),
@@ -127,23 +127,23 @@ export async function getUserPosts(uid: string, limitCount: number = 20, lastDoc
     }
 
     const snapshot = await getDocs(q);
-    const posts = snapshot.docs.map(doc => ({
+    const works = snapshot.docs.map(doc => ({
       ...doc.data(),
       id: doc.id,
       createdAt: doc.data().createdAt?.toDate() || new Date(),
       updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-    })) as Post[];
+    })) as Work[];
 
     const lastVisible = snapshot.docs[snapshot.docs.length - 1];
 
     return {
       success: true,
-      posts,
+      works,
       lastDoc: lastVisible,
       hasMore: snapshot.docs.length === limitCount,
     };
   } catch (error: any) {
-    return { success: false, error: error.message, posts: [], hasMore: false };
+    return { success: false, error: error.message, works: [], hasMore: false };
   }
 }
 

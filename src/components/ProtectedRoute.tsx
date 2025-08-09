@@ -7,17 +7,18 @@ import { Spinner } from '@/components/ui/Spinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requireAuth?: boolean; // ログイン必須かどうか
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireAuth = true }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (requireAuth && !loading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, requireAuth]);
 
   if (loading) {
     return (
@@ -27,7 +28,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user) {
+  if (requireAuth && !user) {
     return null;
   }
 

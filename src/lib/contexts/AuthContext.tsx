@@ -57,16 +57,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAnonymous(firebaseUser?.isAnonymous || false);
         
         if (firebaseUser) {
+          console.log('AuthContext: Firebase user found:', firebaseUser.email);
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            setUserData({
+            const userData = {
               ...data,
               createdAt: data.createdAt?.toDate() || new Date(),
               updatedAt: data.updatedAt?.toDate() || new Date(),
-            } as User);
+            } as User;
+            console.log('AuthContext: User data set:', userData);
+            setUserData(userData);
+          } else {
+            console.log('AuthContext: User document not found');
           }
         } else {
+          console.log('AuthContext: No Firebase user');
           setUserData(null);
         }
       } catch (err: any) {

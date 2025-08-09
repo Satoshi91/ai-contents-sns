@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User } from '@/types/user';
-import { User as UserIcon, Settings, LogOut, UserCircle } from 'lucide-react';
+import { User as UserIcon, Settings, LogOut, UserCircle, FileText } from 'lucide-react';
 import { getImageURL } from '@/lib/cloudflare/images';
 
 interface ProfileDropdownProps {
@@ -48,7 +48,12 @@ export function ProfileDropdown({ user, profileImageUrl, onLogout }: ProfileDrop
 
   const handleSettingsClick = () => {
     setIsOpen(false);
-    router.push(`/profile/${user.username}`);
+    router.push('/settings');
+  };
+
+  const handleWorksClick = () => {
+    setIsOpen(false);
+    router.push('/works');
   };
 
   const handleLogoutClick = () => {
@@ -56,10 +61,17 @@ export function ProfileDropdown({ user, profileImageUrl, onLogout }: ProfileDrop
     onLogout();
   };
 
+  const handleToggleDropdown = () => {
+    console.log('ProfileDropdown clicked, current state:', isOpen);
+    setIsOpen(!isOpen);
+  };
+
+  console.log('ProfileDropdown render, isOpen:', isOpen, 'user:', user?.displayName);
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggleDropdown}
         className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         title={`${user.displayName}のプロフィール`}
         aria-expanded={isOpen}
@@ -111,15 +123,23 @@ export function ProfileDropdown({ user, profileImageUrl, onLogout }: ProfileDrop
           <div className="py-1">
             <button
               onClick={handleProfileClick}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             >
               <UserIcon size={16} className="mr-3" />
               マイページ
             </button>
             
             <button
+              onClick={handleWorksClick}
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <FileText size={16} className="mr-3" />
+              自分の作品
+            </button>
+            
+            <button
               onClick={handleSettingsClick}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             >
               <Settings size={16} className="mr-3" />
               設定

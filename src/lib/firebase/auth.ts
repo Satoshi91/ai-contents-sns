@@ -52,7 +52,37 @@ export async function signUp(email: string, password: string, username: string, 
 export async function signIn(email: string, password: string) {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return { success: true, user: userCredential.user };
+    const user = userCredential.user;
+
+    // 既存ユーザーのFirestoreドキュメントを確認し、なければ作成
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    
+    if (!userDoc.exists()) {
+      const username = user.email?.split('@')[0] || `user_${user.uid.slice(0, 8)}`;
+      
+      const userData = {
+        uid: user.uid,
+        email: user.email!,
+        username,
+        displayName: user.displayName || username,
+        bio: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      // photoURLがnullでない場合のみ追加
+      if (user.photoURL) {
+        (userData as any).photoURL = user.photoURL;
+      }
+
+      await setDoc(doc(db, 'users', user.uid), userData);
+
+      await setDoc(doc(db, 'usernames', username), {
+        uid: user.uid,
+      });
+    }
+
+    return { success: true, user };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

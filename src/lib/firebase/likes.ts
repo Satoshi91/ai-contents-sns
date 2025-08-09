@@ -1,0 +1,147 @@
+import { db } from './app';
+import { doc, getDoc, updateDoc, serverTimestamp, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
+
+export interface LikeResult {
+  success: boolean;
+  isLiked: boolean;
+  newLikeCount: number;
+  error?: string;
+}
+
+export interface UserLikes {
+  likedWorkIds: string[];
+  updatedAt: Date;
+}
+
+export const toggleLike = async (
+  workId: string,
+  userId: string
+): Promise<LikeResult> => {
+  try {
+    if (!userId || !workId) {
+      return {
+        success: false,
+        isLiked: false,
+        newLikeCount: 0,
+        error: 'ユーザーIDまたは作品IDが無効です'
+      };
+    }
+
+    const result = await runTransaction(db, async (transaction) => {
+      const likesRef = doc(db, 'likes', userId);
+      const workRef = doc(db, 'works', workId);
+
+      const [likesDoc, workDoc] = await Promise.all([
+        transaction.get(likesRef),
+        transaction.get(workRef)
+      ]);
+
+      if (!workDoc.exists()) {
+        throw new Error('作品が見つかりません');
+      }
+
+      const currentLikedIds = likesDoc.exists() ? (likesDoc.data().likedWorkIds || []) : [];
+      const currentLikeCount = workDoc.data().likeCount || 0;
+      const isCurrentlyLiked = currentLikedIds.includes(workId);
+
+      let newLikeCount: number;
+      let isLiked: boolean;
+
+      if (isCurrentlyLiked) {
+        // いいねを削除
+        transaction.update(likesRef, {
+          likedWorkIds: arrayRemove(workId),
+          updatedAt: serverTimestamp()
+        });
+        newLikeCount = Math.max(0, currentLikeCount - 1);
+        isLiked = false;
+      } else {
+        // いいねを追加
+        if (likesDoc.exists()) {
+          transaction.update(likesRef, {
+            likedWorkIds: arrayUnion(workId),
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          transaction.set(likesRef, {
+            likedWorkIds: [workId],
+            updatedAt: serverTimestamp()
+          });
+        }
+        newLikeCount = currentLikeCount + 1;
+        isLiked = true;
+      }
+
+      // 作品のいいね数を更新
+      transaction.update(workRef, {
+        likeCount: newLikeCount
+      });
+
+      return { isLiked, newLikeCount };
+    });
+
+    return {
+      success: true,
+      isLiked: result.isLiked,
+      newLikeCount: result.newLikeCount
+    };
+  } catch (error) {
+    console.error('いいね切り替えエラー:', error);
+    return {
+      success: false,
+      isLiked: false,
+      newLikeCount: 0,
+      error: error instanceof Error ? error.message : 'いいねの処理に失敗しました'
+    };
+  }
+};
+
+export const getUserLikes = async (userId: string): Promise<UserLikes | null> => {
+  try {
+    if (!userId) {
+      return null;
+    }
+
+    const likesDoc = await getDoc(doc(db, 'likes', userId));
+    
+    if (!likesDoc.exists()) {
+      return {
+        likedWorkIds: [],
+        updatedAt: new Date()
+      };
+    }
+
+    const data = likesDoc.data();
+    return {
+      likedWorkIds: data.likedWorkIds || [],
+      updatedAt: data.updatedAt?.toDate() || new Date()
+    };
+  } catch (error) {
+    console.error('ユーザーいいね取得エラー:', error);
+    return null;
+  }
+};
+
+export const isWorkLiked = async (workId: string, userId: string): Promise<boolean> => {
+  try {
+    if (!userId || !workId) {
+      return false;
+    }
+
+    const userLikes = await getUserLikes(userId);
+    return userLikes ? userLikes.likedWorkIds.includes(workId) : false;
+  } catch (error) {
+    console.error('いいね状態確認エラー:', error);
+    return false;
+  }
+};
+
+export const getUserLikedWorks = async (userId: string): Promise<string[]> => {
+  try {
+    const userLikes = await getUserLikes(userId);
+    return userLikes ? userLikes.likedWorkIds : [];
+  } catch (error) {
+    console.error('ユーザーいいね作品取得エラー:', error);
+    return [];
+  }
+};

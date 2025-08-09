@@ -1,5 +1,5 @@
 import { User, UserProfile } from './user';
-import { Post } from './post';
+import { Work } from './work';
 import { PaginatedResponse } from './common';
 
 export interface AuthResponse {
@@ -7,18 +7,18 @@ export interface AuthResponse {
   token: string;
 }
 
-export interface GetPostsResponse extends PaginatedResponse<Post> {}
+export interface GetWorksResponse extends PaginatedResponse<Work> {}
 
 export interface GetUserProfileResponse {
   profile: UserProfile;
-  posts: Post[];
+  works: Work[];
 }
 
-export interface CreatePostResponse {
-  post: Post;
+export interface CreateWorkResponse {
+  work: Work;
 }
 
-export interface DeletePostResponse {
+export interface DeleteWorkResponse {
   success: boolean;
   message: string;
 }
