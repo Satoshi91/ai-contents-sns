@@ -3,8 +3,8 @@
 import { ContentType } from '@/types/content';
 
 interface ContentTypeSelectorProps {
-  selectedType: ContentType;
-  onTypeChange: (type: ContentType) => void;
+  selectedType: ContentType | 'mixed';
+  onTypeChange: (type: ContentType | 'mixed') => void;
   disabled?: boolean;
 }
 
@@ -12,7 +12,7 @@ const contentTypeOptions = [
   { value: 'voice' as const, label: 'ボイス', description: '音声ファイル単体の投稿' },
   { value: 'script' as const, label: 'スクリプト', description: 'テキスト台本の投稿' },
   { value: 'image' as const, label: 'イラスト', description: '画像単体の投稿' },
-  { value: 'work' as const, label: '作品', description: '複数コンテンツを組み合わせた作品' },
+  { value: 'mixed' as const, label: '複合作品', description: '音声・画像・台本を組み合わせた作品' },
 ];
 
 export function ContentTypeSelector({ selectedType, onTypeChange, disabled = false }: ContentTypeSelectorProps) {

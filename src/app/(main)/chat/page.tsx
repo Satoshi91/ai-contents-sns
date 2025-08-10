@@ -1,8 +1,9 @@
 'use client';
 
 import { useChat } from 'ai/react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { ChatMessage } from '@/components/features/AIChat/ChatMessage';
 
 export default function ChatPage() {
   const { 
@@ -72,41 +73,7 @@ export default function ChatPage() {
         ) : (
           <div className="space-y-4">
             {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                <div
-                  className={`flex max-w-[70%] ${
-                    message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                  }`}
-                >
-                  <div
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      message.role === 'user'
-                        ? 'bg-blue-500 ml-3'
-                        : 'bg-gray-300 mr-3'
-                    }`}
-                  >
-                    {message.role === 'user' ? (
-                      <User size={18} className="text-white" />
-                    ) : (
-                      <Bot size={18} className="text-gray-600" />
-                    )}
-                  </div>
-                  <div
-                    className={`px-4 py-2 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-white text-gray-900 shadow-sm'
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                  </div>
-                </div>
-              </div>
+              <ChatMessage key={message.id} message={message} />
             ))}
             {isLoading && (
               <div className="flex justify-start">

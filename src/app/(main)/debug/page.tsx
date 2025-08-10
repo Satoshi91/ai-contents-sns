@@ -705,6 +705,92 @@ export default function DebugPage() {
     setAiChatDebugLogs(prev => [...prev, { timestamp, message, type }]);
   };
 
+  // Aivis API テスト専用のstate
+  const [aivisApiLogs, setAivisApiLogs] = useState<Array<{timestamp: string, message: string, type: 'info' | 'success' | 'error'}>>([]);
+  const [aivisTestText, setAivisTestText] = useState('こんにちは！これはAivis Cloud APIのテスト音声です。');
+  const [aivisTestResult, setAivisTestResult] = useState<any>(null);
+  const [aivisTesting, setAivisTesting] = useState(false);
+
+  const addAivisLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    setAivisApiLogs(prev => [...prev, { timestamp, message, type }]);
+  };
+
+  const testAivisConnection = async () => {
+    if (!user) {
+      toast.error('認証が必要です');
+      return;
+    }
+
+    setAivisTesting(true);
+    setAivisTestResult(null);
+    addAivisLog('Aivis Cloud API接続テストを開始...');
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('ログインが必要です');
+      }
+      
+      const token = await currentUser.getIdToken();
+      addAivisLog('Firebase認証トークンを取得: OK');
+
+      // 環境変数の確認
+      addAivisLog('環境変数の確認...');
+
+      const response = await fetch('/api/aivis/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text: aivisTestText,
+          outputFormat: 'mp3',
+        }),
+      });
+
+      addAivisLog(`APIレスポンス: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'JSONパースエラー' }));
+        throw new Error(`API Error ${response.status}: ${errorData.error || response.statusText}`);
+      }
+
+      const result = await response.json();
+      setAivisTestResult(result);
+
+      if (result.success) {
+        addAivisLog('✅ Aivis API接続成功！', 'success');
+        addAivisLog(`音声URL: ${result.audioUrl}`, 'success');
+        addAivisLog(`音声ID: ${result.audioId}`, 'success');
+      } else {
+        addAivisLog(`❌ Aivis API エラー: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      addAivisLog(`❌ 接続テストエラー: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      console.error('Aivis API test error:', error);
+    } finally {
+      setAivisTesting(false);
+    }
+  };
+
+  const testAivisEnvironment = () => {
+    addAivisLog('Aivis Cloud API環境設定の確認を開始...');
+    
+    // クライアントサイドから直接環境変数は見えないが、設定の確認
+    addAivisLog('環境変数の存在確認:');
+    addAivisLog('- AIVIS_API_KEY: [サーバーサイドでのみ確認可能]');
+    addAivisLog('- AIVIS_DEFAULT_MODEL_UUID: [サーバーサイドでのみ確認可能]');
+    
+    // APIエンドポイントの確認
+    addAivisLog('APIエンドポイント: /api/aivis/generate');
+    addAivisLog('デフォルトモデル: a59cb814-0083-4369-8542-f51a29e72af7');
+    addAivisLog('対応フォーマット: mp3, wav, flac, aac, opus');
+    
+    addAivisLog('環境確認完了。実際の接続テストを実行してください。', 'success');
+  };
+
   const testAiConnection = async () => {
     if (!user) {
       toast.error('認証が必要です');
@@ -1615,6 +1701,129 @@ export default function DebugPage() {
                 <p className="text-sm text-blue-800">
                   <strong>説明:</strong> これはホーム画面で実際に表示される「みんなの新着」と同じWorksSectionコンポーネントです。
                   画像やデータの取得で問題がある場合、ここでエラーや空のリストが表示されます。
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Aivis Cloud API テスト</h2>
+          <div className="space-y-4">
+            {/* Aivis API接続テスト */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-medium mb-3">Aivis Cloud API接続テスト</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    テスト音声テキスト
+                  </label>
+                  <textarea
+                    value={aivisTestText}
+                    onChange={(e) => setAivisTestText(e.target.value)}
+                    placeholder="音声に変換するテキストを入力してください..."
+                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={testAivisConnection}
+                    disabled={aivisTesting || !user}
+                    className="cursor-pointer px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {aivisTesting ? 'テスト実行中...' : 'Aivis API テスト実行'}
+                  </button>
+                  <button
+                    onClick={testAivisEnvironment}
+                    disabled={aivisTesting}
+                    className="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
+                  >
+                    環境設定確認
+                  </button>
+                  <button
+                    onClick={() => setAivisApiLogs([])}
+                    className="cursor-pointer px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors duration-200"
+                  >
+                    ログクリア
+                  </button>
+                </div>
+                
+                {/* Aivis APIテスト結果表示 */}
+                <div className="bg-gray-100 p-3 rounded max-h-40 overflow-auto">
+                  {aivisApiLogs.length > 0 ? (
+                    <div className="space-y-1 text-sm font-mono">
+                      {aivisApiLogs.map((log, index) => (
+                        <div key={index} className={`${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-green-600' : 'text-gray-700'}`}>
+                          [{log.timestamp}] {log.message}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-600 text-sm">Aivis APIテスト結果がここに表示されます</p>
+                  )}
+                </div>
+                
+                {/* 音声再生エリア */}
+                {aivisTestResult?.success && aivisTestResult?.audioUrl && (
+                  <div className="border rounded-lg p-4 bg-green-50">
+                    <h4 className="font-medium text-green-800 mb-2">✅ 音声生成成功</h4>
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-700">
+                        AudioURL: <span className="font-mono">{aivisTestResult.audioUrl}</span>
+                      </p>
+                      <p className="text-sm text-green-700">
+                        AudioID: <span className="font-mono">{aivisTestResult.audioId}</span>
+                      </p>
+                      <audio controls className="w-full mt-2">
+                        <source src={aivisTestResult.audioUrl} type="audio/mpeg" />
+                        お使いのブラウザは音声の再生に対応していません。
+                      </audio>
+                    </div>
+                  </div>
+                )}
+                
+                {/* エラー表示 */}
+                {aivisTestResult && !aivisTestResult.success && (
+                  <div className="border rounded-lg p-4 bg-red-50">
+                    <h4 className="font-medium text-red-800 mb-2">❌ 音声生成失敗</h4>
+                    <p className="text-sm text-red-700">
+                      エラー: {aivisTestResult.error}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* 設定情報 */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-medium mb-3">Aivis Cloud API設定情報</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="font-medium">APIエンドポイント:</span>
+                  <span className="text-gray-600">/api/aivis/generate</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">デフォルトモデル:</span>
+                  <span className="text-gray-600">a59cb814-0083-4369-8542-f51a29e72af7</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">対応フォーマット:</span>
+                  <span className="text-gray-600">mp3, wav, flac, aac, opus</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">認証状態:</span>
+                  <span className={user ? 'text-green-600' : 'text-red-600'}>
+                    {user ? 'Firebase Auth有効' : '未認証'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-sm text-yellow-800">
+                  <strong>注意:</strong> Aivis Cloud APIキーが.env.localに正しく設定されていることを確認してください。
+                  エラーが発生する場合は、環境変数AIVIS_API_KEYの値を確認してください。
                 </p>
               </div>
             </div>

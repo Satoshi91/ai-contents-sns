@@ -7,11 +7,7 @@ import { useFollowFeed, useHasFollowFeed } from '@/lib/hooks/useFollow';
 import { Button } from '@/components/ui/Button';
 import { WorksSection } from '@/components/ui/WorksSection';
 import { WorksCard } from '@/components/ui/WorksCard';
-import { ContentList } from '@/components/ui/ContentList';
-import { ContentTypeFilter } from '@/components/ui/ContentTypeFilter';
 import { AuthModal } from '@/components/ui/AuthModal';
-import { ContentType } from '@/types/content';
-import { useUnifiedFeed } from '@/lib/hooks/useUnifiedFeed';
 import { useRouter } from 'next/navigation';
 import { User, Home, Users } from 'lucide-react';
 
@@ -25,20 +21,6 @@ export default function HomePage() {
   // タブ状態管理
   const [activeTab, setActiveTab] = useState<FeedTab>('all');
   
-  // コンテンツフィルター状態管理
-  const [selectedContentType, setSelectedContentType] = useState<ContentType | 'all'>('all');
-  
-  // 統合フィード
-  const { 
-    works: unifiedWorks, 
-    isLoading: unifiedLoading, 
-    error: unifiedError, 
-    hasMore: unifiedHasMore,
-    loadMore: unifiedLoadMore
-  } = useUnifiedFeed({ 
-    contentTypeFilter: selectedContentType,
-    limit: 20 
-  });
   
   // 認証モーダル状態
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -242,81 +224,10 @@ export default function HomePage() {
         </div>
       ) : (
         // 全体フィード（デフォルト）
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* メインコンテンツ */}
-          <div className="lg:col-span-3 space-y-8">
-            {/* 統合フィード */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                {selectedContentType === 'all' ? '新着コンテンツ' : `新着${selectedContentType === 'voice' ? 'ボイス' : selectedContentType === 'script' ? 'スクリプト' : selectedContentType === 'image' ? 'イラスト' : '作品'}`}
-              </h2>
-              
-              {unifiedError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                  <p className="text-red-600 text-sm">{unifiedError}</p>
-                </div>
-              )}
-              
-              {unifiedLoading ? (
-                <div className="space-y-4">
-                  {[...Array(3)].map((_, index) => (
-                    <div key={index} className="animate-pulse">
-                      <div className="flex items-start space-x-3 mb-3">
-                        <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                        <div className="flex-1">
-                          <div className="h-4 bg-gray-200 rounded w-1/3 mb-1"></div>
-                          <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-                        </div>
-                      </div>
-                      <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-20 bg-gray-200 rounded"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : unifiedWorks.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>コンテンツがありません</p>
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {unifiedWorks.map(work => {
-                      const isLiked = user && !isAnonymous ? isWorkLiked(work.id) : false;
-                      const likeState = likeStates[work.id];
-                      const displayLikeCount = likeState?.likeCount ?? work.likeCount;
-                      
-                      return (
-                        <WorksCard
-                          key={work.id}
-                          work={work}
-                          isLiked={isLiked}
-                          likeCount={displayLikeCount}
-                          onLike={(workId, currentLikeCount) => handleLike(workId, currentLikeCount)}
-                          onUserClick={(username) => handleUserClick(username)}
-                          onWorkClick={(workId) => handleWorkClick(workId)}
-                        />
-                      );
-                    })}
-                  </div>
-                  
-                  {unifiedHasMore && (
-                    <div className="text-center mt-6">
-                      <Button
-                        onClick={unifiedLoadMore}
-                        variant="outline"
-                        className="cursor-pointer"
-                      >
-                        さらに読み込む
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
+        <div className="max-w-5xl mx-auto space-y-8">
             {/* みんなの新着作品 */}
             <WorksSection
-              title="みんなの新着作品（従来形式）"
+              title="みんなの新着作品"
               category="latest"
               config={latestWorksConfig}
               onLike={handleLike}
@@ -337,15 +248,6 @@ export default function HomePage() {
               likeStates={getLikeStates()}
               isWorkLiked={isWorkLiked}
             />
-          </div>
-
-          {/* サイドバー */}
-          <div className="lg:col-span-1">
-            <ContentTypeFilter
-              selectedType={selectedContentType}
-              onTypeChange={setSelectedContentType}
-            />
-          </div>
         </div>
       )}
 

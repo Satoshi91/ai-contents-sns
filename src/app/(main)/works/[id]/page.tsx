@@ -192,6 +192,54 @@ export default function WorkDetailPage() {
     );
   }
 
+  // コンテンツタイプに応じた表示情報を取得
+  const getContentTypeInfo = () => {
+    const contentType = work.contentType || 'legacy';
+    
+    switch (contentType) {
+      case 'voice':
+        return {
+          label: 'ボイス',
+          icon: '🎤',
+          showAudioSection: true,
+          showScriptSection: false,
+          showImageSection: !!work.imageUrl,
+          layoutType: 'voice'
+        };
+      case 'script':
+        return {
+          label: 'スクリプト',
+          icon: '📝',
+          showAudioSection: false,
+          showScriptSection: true,
+          showImageSection: !!work.imageUrl,
+          layoutType: 'script'
+        };
+      case 'image':
+        return {
+          label: 'イラスト',
+          icon: '🎨',
+          showAudioSection: false,
+          showScriptSection: false,
+          showImageSection: true,
+          layoutType: 'image'
+        };
+      case 'mixed':
+      case 'legacy':
+      default:
+        return {
+          label: '作品',
+          icon: '🎭',
+          showAudioSection: !!work.audioUrl,
+          showScriptSection: !!work.script,
+          showImageSection: !!work.imageUrl,
+          layoutType: 'mixed'
+        };
+    }
+  };
+
+  const contentTypeInfo = getContentTypeInfo();
+
   return (
     <div className="mx-8 py-8">
       {/* ヘッダー */}
@@ -227,7 +275,15 @@ export default function WorkDetailPage() {
       {/* コンテンツエリア統一 */}
       <div className="space-y-8">
         {/* 作品詳細カード */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden lg:grid lg:grid-cols-3 lg:gap-8">
+        <div className={`bg-white rounded-lg shadow-lg overflow-hidden ${
+          contentTypeInfo.layoutType === 'script' 
+            ? 'lg:grid lg:grid-cols-2 lg:gap-8'  // スクリプト型は2カラム
+            : contentTypeInfo.layoutType === 'image' 
+            ? 'lg:grid lg:grid-cols-2 lg:gap-8'  // イラスト型は2カラム
+            : contentTypeInfo.layoutType === 'voice'
+            ? 'lg:grid lg:grid-cols-2 lg:gap-8'  // ボイス型は2カラム
+            : 'lg:grid lg:grid-cols-3 lg:gap-8'   // mixed/legacyは3カラム
+        }`}>
           {/* 画像・音声エリア */}
           <div className="aspect-square bg-gray-200 relative lg:col-span-1">
             {work.imageUrl && work.imageId ? (
@@ -245,8 +301,24 @@ export default function WorkDetailPage() {
                 className="object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                <span className="text-gray-400 text-xl">画像</span>
+              <div className={`w-full h-full flex items-center justify-center ${
+                contentTypeInfo.layoutType === 'script' 
+                  ? 'bg-gradient-to-br from-green-100 to-teal-100' 
+                  : contentTypeInfo.layoutType === 'voice'
+                  ? 'bg-gradient-to-br from-purple-100 to-pink-100'
+                  : 'bg-gradient-to-br from-blue-100 to-purple-100'
+              }`}>
+                <div className="text-center">
+                  <div className="text-6xl mb-4">{contentTypeInfo.icon}</div>
+                  <span className="text-gray-500 text-xl">{contentTypeInfo.label}</span>
+                  {contentTypeInfo.layoutType === 'script' && work.script && (
+                    <div className="mt-4 max-w-md">
+                      <div className="text-sm text-gray-600 line-clamp-3 bg-white bg-opacity-50 rounded-lg p-3">
+                        {work.script.slice(0, 150)}...
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             
@@ -273,9 +345,18 @@ export default function WorkDetailPage() {
           <div className="p-6 lg:col-span-1 lg:flex lg:flex-col">
             {/* タイトル */}
             <div className="mb-4">
-              <h1 className="text-2xl font-bold text-gray-900">
-                {work.title}
-              </h1>
+              <div className="flex items-start justify-between">
+                <h1 className="text-2xl font-bold text-gray-900 flex-1">
+                  {work.title}
+                </h1>
+                {contentTypeInfo.label !== '作品' && (
+                  <div className="ml-4">
+                    <span className="inline-flex items-center px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded-full">
+                      {contentTypeInfo.icon} {contentTypeInfo.label}
+                    </span>
+                  </div>
+                )}
+              </div>
               {work.isR18Work && (
                 <div className="mt-2">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -390,7 +471,7 @@ export default function WorkDetailPage() {
             )}
             
             {/* 音声ファイル情報 */}
-            {work.audioOriginalFilename && (
+            {contentTypeInfo.showAudioSection && work.audioOriginalFilename && (
               <div className="mb-4">
                 <h3 className="text-base font-semibold text-gray-900 mb-2">音声ファイル</h3>
                 <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
@@ -429,21 +510,23 @@ export default function WorkDetailPage() {
             )}
           </div>
 
-          {/* 台本エリア */}
-          <div className="p-6 lg:col-span-1 lg:flex lg:flex-col">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">台本</h3>
-            {work.script ? (
-              <div className="flex-1 bg-gray-50 rounded-lg p-4 overflow-y-auto max-h-96">
-                <pre className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
-                  {work.script}
-                </pre>
-              </div>
-            ) : (
-              <div className="flex-1 bg-gray-50 rounded-lg p-4 flex items-center justify-center">
-                <p className="text-gray-500 text-center">台本が登録されていません</p>
-              </div>
-            )}
-          </div>
+          {/* 台本エリア（script系コンテンツまたはmixed/legacyで台本がある場合のみ表示） */}
+          {contentTypeInfo.showScriptSection && (
+            <div className="p-6 lg:col-span-1 lg:flex lg:flex-col">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">台本</h3>
+              {work.script ? (
+                <div className="flex-1 bg-gray-50 rounded-lg p-4 overflow-y-auto max-h-96">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
+                    {work.script}
+                  </pre>
+                </div>
+              ) : (
+                <div className="flex-1 bg-gray-50 rounded-lg p-4 flex items-center justify-center">
+                  <p className="text-gray-500 text-center">台本が登録されていません</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* コメントセクション */}

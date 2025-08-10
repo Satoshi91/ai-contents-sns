@@ -107,3 +107,6 @@ export function useAuth() {
   }
   return context;
 }
+
+// 互換性のためのエイリアス
+export const useAuthContext = useAuth;

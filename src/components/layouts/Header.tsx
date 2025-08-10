@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useAgeRating } from '@/lib/contexts/AgeRatingContext';
+import { useScrollDirection } from '@/lib/hooks/useScrollDirection';
 import { signOut } from '@/lib/firebase/auth';
 import { Button } from '@/components/ui/Button';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
@@ -20,6 +21,7 @@ interface HeaderProps {
 export function Header({ onMenuToggle }: HeaderProps) {
   const { user, userData, isAnonymous } = useAuth();
   const { ageFilter, setAgeFilter } = useAgeRating();
+  const isVisible = useScrollDirection({ threshold: 5 });
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -46,7 +48,9 @@ export function Header({ onMenuToggle }: HeaderProps) {
     : userData?.photoURL;
 
   return (
-    <header className="bg-white shadow">
+    <header className={`fixed top-0 left-0 right-0 bg-white shadow z-50 transition-transform duration-300 ${
+      isVisible ? 'translate-y-0' : '-translate-y-full'
+    }`}>
       <div className="mx-4 px-4 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-3">

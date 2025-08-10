@@ -75,6 +75,47 @@ export function WorksCard({
     onUserClick?.(work.username);
   };
 
+  // コンテンツタイプに応じた表示情報を取得
+  const getContentTypeInfo = () => {
+    const contentType = work.contentType || 'legacy';
+    
+    switch (contentType) {
+      case 'voice':
+        return {
+          label: 'ボイス',
+          icon: '🎤',
+          primaryContent: 'audio'
+        };
+      case 'script':
+        return {
+          label: 'スクリプト',
+          icon: '📝',
+          primaryContent: 'script'
+        };
+      case 'image':
+        return {
+          label: 'イラスト',
+          icon: '🎨',
+          primaryContent: 'image'
+        };
+      case 'mixed':
+        return {
+          label: '複合作品',
+          icon: '🎭',
+          primaryContent: 'mixed'
+        };
+      case 'legacy':
+      default:
+        return {
+          label: '作品',
+          icon: '🎭',
+          primaryContent: 'mixed'
+        };
+    }
+  };
+
+  const contentTypeInfo = getContentTypeInfo();
+
   const handleWorkClick = () => {
     onWorkClick?.(work.id);
   };
@@ -130,8 +171,17 @@ export function WorksCard({
                 onError={() => setImageError(true)}
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center group-hover:brightness-75 transition-all duration-200">
-                <span className="text-gray-400 text-xs">画像</span>
+              <div className={`w-full h-full flex items-center justify-center group-hover:brightness-75 transition-all duration-200 ${
+                contentTypeInfo.primaryContent === 'script' 
+                  ? 'bg-gradient-to-br from-green-100 to-teal-100' 
+                  : contentTypeInfo.primaryContent === 'audio'
+                  ? 'bg-gradient-to-br from-purple-100 to-pink-100'
+                  : 'bg-gradient-to-br from-blue-100 to-purple-100'
+              }`}>
+                <div className="text-center">
+                  <div className="text-lg mb-1">{contentTypeInfo.icon}</div>
+                  <span className="text-gray-500 text-xs">{contentTypeInfo.label}</span>
+                </div>
               </div>
             )}
             
@@ -177,10 +227,17 @@ export function WorksCard({
                 {work.title}
               </h3>
 
-              {/* タグ */}
-              {(work.contentRating === '18+' || (work.tags && work.tags.length > 0)) && (
+              {/* バッジとタグ */}
+              {(work.contentRating === '18+' || contentTypeInfo.label !== '作品' || (work.tags && work.tags.length > 0)) && (
                 <div className="mb-3">
                   <div className="flex flex-wrap gap-1.5">
+                    {/* コンテンツタイプバッジ */}
+                    {contentTypeInfo.label !== '作品' && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full cursor-default">
+                        {contentTypeInfo.icon} {contentTypeInfo.label}
+                      </span>
+                    )}
+                    
                     {/* R-18バッジ */}
                     {work.contentRating === '18+' && (
                       <span className="inline-flex items-center px-2 py-1 text-xs font-bold text-white bg-pink-300 rounded-full cursor-default">
@@ -319,8 +376,26 @@ export function WorksCard({
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center group-hover:brightness-75 transition-all duration-200">
-            <span className="text-gray-400 text-sm">画像</span>
+          <div className={`w-full h-full flex items-center justify-center group-hover:brightness-75 transition-all duration-200 ${
+            contentTypeInfo.primaryContent === 'script' 
+              ? 'bg-gradient-to-br from-green-100 to-teal-100' 
+              : contentTypeInfo.primaryContent === 'audio'
+              ? 'bg-gradient-to-br from-purple-100 to-pink-100'
+              : 'bg-gradient-to-br from-blue-100 to-purple-100'
+          }`}>
+            <div className="text-center">
+              <div className="text-2xl mb-1">{contentTypeInfo.icon}</div>
+              <span className="text-gray-500 text-sm">{contentTypeInfo.label}</span>
+            </div>
+          </div>
+        )}
+        
+        {/* 左上のコンテンツタイプバッジ */}
+        {contentTypeInfo.label !== '作品' && (
+          <div className="absolute top-2 left-2">
+            <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-black bg-opacity-60 rounded-full">
+              {contentTypeInfo.icon} {contentTypeInfo.label}
+            </span>
           </div>
         )}
         

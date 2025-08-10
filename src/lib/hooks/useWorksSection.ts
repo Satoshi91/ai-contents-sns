@@ -69,6 +69,10 @@ export function useWorksSection({
           worksData = await getAllWorks(config.limit || 8);
           break;
           
+        case 'all':
+          worksData = await getAllWorks(config.limit || 20);
+          break;
+          
         case 'following':
           // フォロー機能が未実装のため、暫定的に全作品を返す
           console.warn('フォロー機能未実装のため、全作品を返却します');

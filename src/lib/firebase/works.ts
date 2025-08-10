@@ -38,6 +38,26 @@ const createWorkTags = (tags: string[]): WorkTag[] => {
   });
 };
 
+// コンテンツタイプの自動判定
+const determineContentType = (input: CreateWorkInput): 'voice' | 'script' | 'image' | 'mixed' => {
+  // ユーザーが明示的に指定した場合はそれを優先
+  if (input.contentType) {
+    return input.contentType;
+  }
+
+  const hasAudio = !!(input.audioUrl && input.audioId);
+  const hasImage = !!(input.imageUrl && input.imageId);
+  const hasScript = !!(input.script && input.script.trim());
+
+  // 単体コンテンツの判定
+  if (hasAudio && !hasImage && !hasScript) return 'voice';
+  if (!hasAudio && hasImage && !hasScript) return 'image';
+  if (!hasAudio && !hasImage && hasScript) return 'script';
+  
+  // 複合コンテンツまたはデフォルト
+  return 'mixed';
+};
+
 // R18判定と年齢制限の計算
 const calculateContentRating = (tags: WorkTag[], userSelectedRating?: 'all' | '18+'): { isR18Work: boolean; contentRating: 'all' | '12+' | '15+' | '18+' } => {
   // ユーザーが明示的に選択した年齢制限を優先
@@ -72,8 +92,16 @@ export const createWork = async (
       return { success: false, error: 'タイトルを入力してください' };
     }
 
-    if (!input.audioUrl) {
-      return { success: false, error: '音声ファイルをアップロードしてください' };
+    // コンテンツタイプに基づくバリデーション
+    const contentType = determineContentType(input);
+    
+    // 最低限1つのコンテンツが必要
+    const hasAudio = !!(input.audioUrl && input.audioId);
+    const hasImage = !!(input.imageUrl && input.imageId);
+    const hasScript = !!(input.script && input.script.trim());
+    
+    if (!hasAudio && !hasImage && !hasScript) {
+      return { success: false, error: '音声、画像、スクリプトのいずれかを設定してください' };
     }
 
     // タグ処理
@@ -90,6 +118,7 @@ export const createWork = async (
       title: input.title.trim(),
       caption: input.caption?.trim() || '',
       script: input.script?.trim() || '',
+      contentType: contentType,
       tags: workTags,
       tagIds,
       tagNames,
@@ -141,6 +170,7 @@ export const getWork = async (workId: string): Promise<Work | null> => {
       title: data.title,
       caption: data.caption,
       script: data.script || undefined,
+      contentType: data.contentType || 'legacy', // 既存データはlegacyとして扱う
       tags: data.tags || [],
       tagIds: data.tagIds || [],
       tagNames: data.tagNames || [],
@@ -195,6 +225,7 @@ export const getUserWorks = async (
         title: data.title,
         caption: data.caption,
         script: data.script || undefined,
+        contentType: data.contentType || 'legacy',
         tags: data.tags || [],
         tagIds: data.tagIds || [],
         tagNames: data.tagNames || [],
@@ -249,6 +280,7 @@ export const getAllWorks = async (
         title: data.title,
         caption: data.caption,
         script: data.script || undefined,
+        contentType: data.contentType || 'legacy',
         tags: data.tags || [],
         tagIds: data.tagIds || [],
         tagNames: data.tagNames || [],
@@ -287,8 +319,16 @@ export const updateWork = async (
       return { success: false, error: 'タイトルを入力してください' };
     }
 
-    if (!input.audioUrl) {
-      return { success: false, error: '音声ファイルをアップロードしてください' };
+    // コンテンツタイプに基づくバリデーション
+    const contentType = determineContentType(input);
+    
+    // 最低限1つのコンテンツが必要
+    const hasAudio = !!(input.audioUrl && input.audioId);
+    const hasImage = !!(input.imageUrl && input.imageId);
+    const hasScript = !!(input.script && input.script.trim());
+    
+    if (!hasAudio && !hasImage && !hasScript) {
+      return { success: false, error: '音声、画像、スクリプトのいずれかを設定してください' };
     }
 
     // 作品の存在確認と権限チェック
@@ -313,6 +353,7 @@ export const updateWork = async (
       title: input.title.trim(),
       caption: input.caption?.trim() || '',
       script: input.script?.trim() || '',
+      contentType: contentType,
       tags: workTags,
       tagIds,
       tagNames,

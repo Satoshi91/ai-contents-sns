@@ -27,7 +27,7 @@ export default function MainLayout({
           <div className="min-h-screen bg-gray-50">
             <Header onMenuToggle={toggleSidebar} />
             
-            <div className="flex">
+            <div className="flex pt-16">
               <Sidebar 
                 isOpen={isSidebarOpen} 
                 onClose={() => setIsSidebarOpen(false)}

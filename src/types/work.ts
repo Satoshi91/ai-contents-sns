@@ -13,9 +13,9 @@ export interface Work {
   script?: string;
   description?: string;
   prompt?: string;
-  // Content compatibility fields
-  type?: ContentType; // 従来のworkはundefined、新しいcontentから変換したものは該当タイプ
-  contentType?: 'legacy' | 'new'; // 'legacy' for existing works, 'new' for content-based works
+  // Content type identification
+  contentType?: 'voice' | 'script' | 'image' | 'mixed' | 'legacy'; // コンテンツタイプ識別
+  // voice: 音声のみ, script: スクリプトのみ, image: 画像のみ, mixed: 複合コンテンツ, legacy: 従来の作品
   imageUrl?: string;
   imageId?: string;
   audioUrl?: string;
@@ -45,6 +45,7 @@ export interface CreateWorkInput {
   audioOriginalFilename?: string;
   tags?: string[];
   ageRating?: 'all' | '18+';
+  contentType?: 'voice' | 'script' | 'image' | 'mixed'; // コンテンツタイプを指定可能
 }
 
 export interface WorkInteraction {
