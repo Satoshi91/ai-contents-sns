@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read/write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Anyone can read works, but only owners can write/update/delete
+    match /works/{workId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+    
+    // Anyone can read comments, but only authenticated users can create
+    // Users can only delete their own comments
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+    
+    // Likes collection
+    match /likes/{likeId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Follows collection
+    match /follows/{followId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Contents collection (new single content posts)
+    match /contents/{contentId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+  }
+}

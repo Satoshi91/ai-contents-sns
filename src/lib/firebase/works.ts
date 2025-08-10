@@ -1,6 +1,7 @@
 import { db } from './app';
 import { collection, addDoc, serverTimestamp, doc, getDoc, getDocs, query, where, orderBy, limit, startAfter, DocumentSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Work, CreateWorkInput } from '@/types/work';
+import { WorkTag, TagCategory } from '@/types/tag';
 
 export interface CreateWorkResult {
   success: boolean;
@@ -18,6 +19,43 @@ export interface DeleteWorkResult {
   error?: string;
 }
 
+// タグを正規化する関数
+const normalizeTag = (tag: string): string => {
+  return tag.trim().toLowerCase();
+};
+
+// タグからWorkTagオブジェクトを作成する関数
+const createWorkTags = (tags: string[]): WorkTag[] => {
+  return tags.map(tag => {
+    const normalizedTag = normalizeTag(tag);
+    return {
+      id: `tag_${normalizedTag}`,
+      name: normalizedTag,
+      category: 'other' as TagCategory,
+      isR18: false,
+      color: '#3B82F6'
+    };
+  });
+};
+
+// R18判定と年齢制限の計算
+const calculateContentRating = (tags: WorkTag[], userSelectedRating?: 'all' | '18+'): { isR18Work: boolean; contentRating: 'all' | '12+' | '15+' | '18+' } => {
+  // ユーザーが明示的に選択した年齢制限を優先
+  if (userSelectedRating) {
+    return {
+      isR18Work: userSelectedRating === '18+',
+      contentRating: userSelectedRating
+    };
+  }
+  
+  // フォールバック: タグベース判定
+  const hasR18Tag = tags.some(tag => tag.isR18);
+  return {
+    isR18Work: hasR18Tag,
+    contentRating: hasR18Tag ? '18+' : 'all'
+  };
+};
+
 export const createWork = async (
   input: CreateWorkInput,
   userId: string,
@@ -34,9 +72,15 @@ export const createWork = async (
       return { success: false, error: 'タイトルを入力してください' };
     }
 
-    if (!input.caption.trim()) {
-      return { success: false, error: 'キャプションを入力してください' };
+    if (!input.audioUrl) {
+      return { success: false, error: '音声ファイルをアップロードしてください' };
     }
+
+    // タグ処理
+    const workTags = input.tags ? createWorkTags(input.tags) : [];
+    const tagIds = workTags.map(tag => tag.id);
+    const tagNames = workTags.map(tag => tag.name);
+    const { isR18Work, contentRating } = calculateContentRating(workTags, input.ageRating);
 
     const workData = {
       uid: userId,
@@ -44,7 +88,15 @@ export const createWork = async (
       displayName,
       userPhotoURL: userPhotoURL || null,
       title: input.title.trim(),
-      caption: input.caption.trim(),
+      caption: input.caption?.trim() || '',
+      script: input.script?.trim() || '',
+      tags: workTags,
+      tagIds,
+      tagNames,
+      isR18Work,
+      contentRating,
+      imageUrl: input.imageUrl || null,
+      imageId: input.imageId || null,
       audioUrl: input.audioUrl || null,
       audioId: input.audioId || null,
       audioOriginalFilename: input.audioOriginalFilename || null,
@@ -88,6 +140,14 @@ export const getWork = async (workId: string): Promise<Work | null> => {
       userPhotoURL: data.userPhotoURL,
       title: data.title,
       caption: data.caption,
+      script: data.script || undefined,
+      tags: data.tags || [],
+      tagIds: data.tagIds || [],
+      tagNames: data.tagNames || [],
+      isR18Work: data.isR18Work || false,
+      contentRating: data.contentRating || 'all',
+      imageUrl: data.imageUrl || undefined,
+      imageId: data.imageId || undefined,
       audioUrl: data.audioUrl || undefined,
       audioId: data.audioId || undefined,
       audioOriginalFilename: data.audioOriginalFilename || undefined,
@@ -134,6 +194,14 @@ export const getUserWorks = async (
         userPhotoURL: data.userPhotoURL,
         title: data.title,
         caption: data.caption,
+        script: data.script || undefined,
+        tags: data.tags || [],
+        tagIds: data.tagIds || [],
+        tagNames: data.tagNames || [],
+        isR18Work: data.isR18Work || false,
+        contentRating: data.contentRating || 'all',
+        imageUrl: data.imageUrl || undefined,
+        imageId: data.imageId || undefined,
         audioUrl: data.audioUrl || undefined,
         audioId: data.audioId || undefined,
         likeCount: data.likeCount || 0,
@@ -180,6 +248,14 @@ export const getAllWorks = async (
         userPhotoURL: data.userPhotoURL,
         title: data.title,
         caption: data.caption,
+        script: data.script || undefined,
+        tags: data.tags || [],
+        tagIds: data.tagIds || [],
+        tagNames: data.tagNames || [],
+        isR18Work: data.isR18Work || false,
+        contentRating: data.contentRating || 'all',
+        imageUrl: data.imageUrl || undefined,
+        imageId: data.imageId || undefined,
         audioUrl: data.audioUrl || undefined,
         audioId: data.audioId || undefined,
         likeCount: data.likeCount || 0,
@@ -211,8 +287,8 @@ export const updateWork = async (
       return { success: false, error: 'タイトルを入力してください' };
     }
 
-    if (!input.caption.trim()) {
-      return { success: false, error: 'キャプションを入力してください' };
+    if (!input.audioUrl) {
+      return { success: false, error: '音声ファイルをアップロードしてください' };
     }
 
     // 作品の存在確認と権限チェック
@@ -226,10 +302,24 @@ export const updateWork = async (
       return { success: false, error: '編集権限がありません' };
     }
 
+    // タグ処理
+    const workTags = input.tags ? createWorkTags(input.tags) : [];
+    const tagIds = workTags.map(tag => tag.id);
+    const tagNames = workTags.map(tag => tag.name);
+    const { isR18Work, contentRating } = calculateContentRating(workTags, input.ageRating);
+
     // 更新データ
     const updateData = {
       title: input.title.trim(),
-      caption: input.caption.trim(),
+      caption: input.caption?.trim() || '',
+      script: input.script?.trim() || '',
+      tags: workTags,
+      tagIds,
+      tagNames,
+      isR18Work,
+      contentRating,
+      imageUrl: input.imageUrl || null,
+      imageId: input.imageId || null,
       audioUrl: input.audioUrl || null,
       audioId: input.audioId || null,
       audioOriginalFilename: input.audioOriginalFilename || null,

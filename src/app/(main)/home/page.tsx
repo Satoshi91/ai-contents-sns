@@ -1,86 +1,145 @@
 'use client';
 
+import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { useWorks } from '@/lib/hooks/useWorks';
 import { useLikes } from '@/lib/hooks/useLikes';
+import { useFollowFeed, useHasFollowFeed } from '@/lib/hooks/useFollow';
 import { Button } from '@/components/ui/Button';
+import { WorksSection } from '@/components/ui/WorksSection';
 import { WorksCard } from '@/components/ui/WorksCard';
+import { ContentList } from '@/components/ui/ContentList';
+import { ContentTypeFilter } from '@/components/ui/ContentTypeFilter';
+import { AuthModal } from '@/components/ui/AuthModal';
+import { ContentType } from '@/types/content';
+import { useUnifiedFeed } from '@/lib/hooks/useUnifiedFeed';
 import { useRouter } from 'next/navigation';
-import { User, Loader2 } from 'lucide-react';
+import { User, Home, Users } from 'lucide-react';
+
+type FeedTab = 'all' | 'following';
 
 export default function HomePage() {
   const { user, userData, isAnonymous } = useAuth();
-  const { works, loading, error } = useWorks();
   const { likeStates, handleToggleLike, isWorkLiked, error: likeError } = useLikes();
   const router = useRouter();
+  
+  // タブ状態管理
+  const [activeTab, setActiveTab] = useState<FeedTab>('all');
+  
+  // コンテンツフィルター状態管理
+  const [selectedContentType, setSelectedContentType] = useState<ContentType | 'all'>('all');
+  
+  // 統合フィード
+  const { 
+    works: unifiedWorks, 
+    isLoading: unifiedLoading, 
+    error: unifiedError, 
+    hasMore: unifiedHasMore,
+    loadMore: unifiedLoadMore
+  } = useUnifiedFeed({ 
+    contentTypeFilter: selectedContentType,
+    limit: 20 
+  });
+  
+  // 認証モーダル状態
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  
+  // フォローフィード関連
+  const { works: followFeedWorks, loading: followFeedLoading, error: followFeedError, hasFeeds } = useFollowFeed(
+    user?.uid || '', 
+    20
+  );
 
-  const handleLike = async (workId: string, currentLikeCount: number) => {
+  const handleLike = useCallback(async (workId: string, currentLikeCount: number) => {
     if (!user || isAnonymous) {
-      // 未ログインユーザーにはログインを促す
       alert('いいねするにはログインが必要です');
-      router.push('/login');
       return;
     }
 
     await handleToggleLike(workId, currentLikeCount);
-  };
+  }, [user, isAnonymous, handleToggleLike]);
 
-  const handleUserClick = (username: string) => {
+  const handleUserClick = useCallback((username: string) => {
     router.push(`/profile/${username}`);
-  };
+  }, [router]);
 
-  const handleWorkClick = (workId: string) => {
+  const handleWorkClick = useCallback((workId: string) => {
     router.push(`/works/${workId}`);
-  };
+  }, [router]);
+
+  // configオブジェクトをメモ化
+  const latestWorksConfig = useMemo(() => ({ limit: 8 }), []);
+  const trendingWorksConfig = useMemo(() => ({ limit: 4 }), []);
+
+  // いいね状態をWorksSection用の形式に変換
+  const getLikeStates = useCallback((works?: any[]) => {
+    const states: Record<string, { isLiked: boolean; likeCount?: number; isLoading?: boolean }> = {};
+    
+    // likeStatesに含まれる作品を処理
+    Object.keys(likeStates).forEach(workId => {
+      const likeState = likeStates[workId];
+      states[workId] = {
+        isLiked: user && !isAnonymous ? isWorkLiked(workId) : false,
+        likeCount: likeState?.likeCount,
+        isLoading: false
+      };
+    });
+    
+    // 指定された作品リストがあれば、likeStatesに含まれていない作品も処理
+    if (works) {
+      works.forEach(work => {
+        if (!states[work.id]) {
+          states[work.id] = {
+            isLiked: user && !isAnonymous ? isWorkLiked(work.id) : false,
+            likeCount: undefined, // 元の作品のlikeCountを使用
+            isLoading: false
+          };
+        }
+      });
+    }
+    
+    return states;
+  }, [likeStates, user, isAnonymous, isWorkLiked]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* ヘッダー */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        {user && !isAnonymous ? (
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                ようこそ、{userData?.displayName}さん！
-              </h2>
-              <p className="text-gray-600 text-sm mt-1">
-                みんなの作品をチェックしてみましょう
-              </p>
+      {/* 未ログインユーザー向けのヘッダー */}
+      {(!user || isAnonymous) && (
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">
+            VOICARISME へようこそ
+          </h2>
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              みんなの素晴らしい作品をチェックしましょう。
+              アカウントを作成すると、投稿やいいねなどの機能をご利用いただけます。
+            </p>
+            <div className="flex space-x-3">
+              <Button 
+                onClick={() => {
+                  setAuthModalMode('signup');
+                  setIsAuthModalOpen(true);
+                }} 
+                size="sm"
+                className="cursor-pointer hover:bg-blue-600 transition-colors duration-200"
+              >
+                アカウント作成
+              </Button>
+              <Button
+                onClick={() => {
+                  setAuthModalMode('signin');
+                  setIsAuthModalOpen(true);
+                }}
+                variant="secondary"
+                size="sm"
+                className="cursor-pointer hover:bg-gray-100 transition-colors duration-200"
+              >
+                ログイン
+              </Button>
             </div>
-            <Button
-              onClick={() => router.push(`/profile/${userData?.username}`)}
-              size="sm"
-            >
-              <User size={16} className="mr-1" />
-              プロフィール
-            </Button>
           </div>
-        ) : (
-          <>
-            <h2 className="text-xl font-semibold mb-4 text-gray-900">
-              AI Contents SNS へようこそ
-            </h2>
-            <div className="space-y-4">
-              <p className="text-gray-600">
-                みんなの素晴らしい作品をチェックしましょう。
-                アカウントを作成すると、投稿やいいねなどの機能をご利用いただけます。
-              </p>
-              <div className="flex space-x-3">
-                <Button onClick={() => router.push('/signup')} size="sm">
-                  アカウント作成
-                </Button>
-                <Button
-                  onClick={() => router.push('/login')}
-                  variant="secondary"
-                  size="sm"
-                >
-                  ログイン
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* いいねエラー表示 */}
       {likeError && (
@@ -89,51 +148,213 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 作品フィード */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">
-          みんなの作品
-        </h3>
+      {/* タブ機能（ログイン済みユーザーのみ） */}
+      {user && !isAnonymous && (
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div className="flex border-b">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`flex-1 flex items-center justify-center px-4 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+                activeTab === 'all'
+                  ? 'border-blue-500 text-blue-600 bg-blue-50'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Home size={18} className="mr-2" />
+              すべて
+            </button>
+            <button
+              onClick={() => setActiveTab('following')}
+              className={`flex-1 flex items-center justify-center px-4 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+                activeTab === 'following'
+                  ? 'border-blue-500 text-blue-600 bg-blue-50'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Users size={18} className="mr-2" />
+              フォロー中
+              {hasFeeds && (
+                <span className="ml-1 text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5">
+                  {followFeedWorks.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-            <span className="ml-2 text-gray-600">作品を読み込み中...</span>
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-            <p className="text-red-600">{error}</p>
-          </div>
-        ) : works.length === 0 ? (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-            <p className="text-gray-600">まだ作品が投稿されていません</p>
-            <p className="text-sm text-gray-500 mt-1">
-              最初の作品を投稿してみませんか？
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {works.map((work) => {
-              const likeState = likeStates[work.id];
-              const workIsLiked = user && !isAnonymous ? isWorkLiked(work.id) : false;
-              const workLikeCount = likeState?.likeCount;
+      {/* フィードコンテンツ */}
+      {user && !isAnonymous && activeTab === 'following' ? (
+        // フォローフィード
+        <div className="space-y-6">
+          {followFeedLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="text-gray-500">フィードを読み込んでいます...</div>
+            </div>
+          ) : followFeedError ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <p className="text-red-600">{followFeedError}</p>
+            </div>
+          ) : !hasFeeds ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
+              <Users size={48} className="mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">まだフォロー中のユーザーがいません</h3>
+              <p className="text-gray-600 mb-4">
+                興味のあるクリエイターをフォローして、最新の作品をチェックしましょう。
+              </p>
+              <Button
+                onClick={() => setActiveTab('all')}
+                variant="secondary"
+              >
+                みんなの作品を見る
+              </Button>
+            </div>
+          ) : followFeedWorks.length === 0 ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
+              <Users size={48} className="mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">新しい作品がありません</h3>
+              <p className="text-gray-600">
+                フォロー中のユーザーの新着作品がここに表示されます。
+              </p>
+            </div>
+          ) : (
+            // フォローフィードの作品一覧
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {followFeedWorks.map(work => {
+                const isLiked = user && !isAnonymous ? isWorkLiked(work.id) : false;
+                const likeState = likeStates[work.id];
+                const displayLikeCount = likeState?.likeCount ?? work.likeCount;
+                
+                return (
+                  <WorksCard
+                    key={work.id}
+                    work={work}
+                    isLiked={isLiked}
+                    likeCount={displayLikeCount}
+                    onLike={(workId, currentLikeCount) => handleLike(workId, currentLikeCount)}
+                    onUserClick={(username) => handleUserClick(username)}
+                    onWorkClick={(workId) => handleWorkClick(workId)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        // 全体フィード（デフォルト）
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* メインコンテンツ */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* 統合フィード */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                {selectedContentType === 'all' ? '新着コンテンツ' : `新着${selectedContentType === 'voice' ? 'ボイス' : selectedContentType === 'script' ? 'スクリプト' : selectedContentType === 'image' ? 'イラスト' : '作品'}`}
+              </h2>
               
-              return (
-                <WorksCard
-                  key={work.id}
-                  work={work}
-                  onLike={handleLike}
-                  onUserClick={handleUserClick}
-                  onWorkClick={handleWorkClick}
-                  isLiked={workIsLiked}
-                  likeCount={workLikeCount}
-                  isLikeLoading={false}
-                />
-              );
-            })}
+              {unifiedError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <p className="text-red-600 text-sm">{unifiedError}</p>
+                </div>
+              )}
+              
+              {unifiedLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, index) => (
+                    <div key={index} className="animate-pulse">
+                      <div className="flex items-start space-x-3 mb-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 rounded w-1/3 mb-1"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                        </div>
+                      </div>
+                      <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-20 bg-gray-200 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : unifiedWorks.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>コンテンツがありません</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {unifiedWorks.map(work => {
+                      const isLiked = user && !isAnonymous ? isWorkLiked(work.id) : false;
+                      const likeState = likeStates[work.id];
+                      const displayLikeCount = likeState?.likeCount ?? work.likeCount;
+                      
+                      return (
+                        <WorksCard
+                          key={work.id}
+                          work={work}
+                          isLiked={isLiked}
+                          likeCount={displayLikeCount}
+                          onLike={(workId, currentLikeCount) => handleLike(workId, currentLikeCount)}
+                          onUserClick={(username) => handleUserClick(username)}
+                          onWorkClick={(workId) => handleWorkClick(workId)}
+                        />
+                      );
+                    })}
+                  </div>
+                  
+                  {unifiedHasMore && (
+                    <div className="text-center mt-6">
+                      <Button
+                        onClick={unifiedLoadMore}
+                        variant="outline"
+                        className="cursor-pointer"
+                      >
+                        さらに読み込む
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* みんなの新着作品 */}
+            <WorksSection
+              title="みんなの新着作品（従来形式）"
+              category="latest"
+              config={latestWorksConfig}
+              onLike={handleLike}
+              onUserClick={handleUserClick}
+              onWorkClick={handleWorkClick}
+              likeStates={getLikeStates()}
+              isWorkLiked={isWorkLiked}
+            />
+
+            {/* 急上昇作品 */}
+            <WorksSection
+              title="急上昇作品"
+              category="trending"
+              config={trendingWorksConfig}
+              onLike={handleLike}
+              onUserClick={handleUserClick}
+              onWorkClick={handleWorkClick}
+              likeStates={getLikeStates()}
+              isWorkLiked={isWorkLiked}
+            />
           </div>
-        )}
-      </div>
+
+          {/* サイドバー */}
+          <div className="lg:col-span-1">
+            <ContentTypeFilter
+              selectedType={selectedContentType}
+              onTypeChange={setSelectedContentType}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 認証モーダル */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authModalMode}
+      />
     </div>
   );
 }

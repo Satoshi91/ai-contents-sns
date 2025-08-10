@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TextArea } from '@/components/ui/TextArea';
+import { TagInput } from '@/components/ui/TagInput';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { AudioFileUpload } from '@/components/features/AudioFileUpload';
+import { ImageFileUpload } from '@/components/features/ImageFileUpload';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { createWork, updateWork, getWork, deleteWork } from '@/lib/firebase/works';
 import { createWorkSchema } from '@/lib/validations/work';
@@ -15,9 +17,14 @@ import toast from 'react-hot-toast';
 export default function ComposePage() {
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
+  const [script, setScript] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageId, setImageId] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [audioId, setAudioId] = useState('');
   const [audioOriginalFilename, setAudioOriginalFilename] = useState('');
+  const [ageRating, setAgeRating] = useState<'all' | '18+'>('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -27,6 +34,27 @@ export default function ComposePage() {
   const searchParams = useSearchParams();
   const workId = searchParams.get('id');
   const isEditMode = !!workId;
+
+  // フォームをリセットする関数
+  const resetForm = () => {
+    setTitle('');
+    setCaption('');
+    setScript('');
+    setTags([]);
+    setImageUrl('');
+    setImageId('');
+    setAudioUrl('');
+    setAudioId('');
+    setAudioOriginalFilename('');
+    setAgeRating('all');
+  };
+
+  // 新規投稿モードに変わったときのフォームリセット
+  useEffect(() => {
+    if (!isEditMode) {
+      resetForm();
+    }
+  }, [isEditMode]);
 
   // 編集モードの場合、作品データを取得
   useEffect(() => {
@@ -45,10 +73,15 @@ export default function ComposePage() {
           }
           
           setTitle(work.title);
-          setCaption(work.caption);
+          setCaption(work.caption || '');
+          setScript(work.script || '');
+          setTags(work.tagNames || []);
+          setImageUrl(work.imageUrl || '');
+          setImageId(work.imageId || '');
           setAudioUrl(work.audioUrl || '');
           setAudioId(work.audioId || '');
           setAudioOriginalFilename(work.audioOriginalFilename || '');
+          setAgeRating(work.contentRating === '18+' ? '18+' : 'all');
         } else {
           toast.error('作品が見つかりません');
           router.push('/home');
@@ -76,13 +109,29 @@ export default function ComposePage() {
     setIsSubmitting(true);
 
     try {
+      // 必須項目チェック
+      if (!title.trim()) {
+        toast.error('タイトルを入力してください');
+        return;
+      }
+      
+      if (!audioUrl) {
+        toast.error('音声ファイルをアップロードしてください');
+        return;
+      }
+
       // バリデーション
       const validationResult = createWorkSchema.safeParse({ 
         title, 
         caption, 
+        script,
+        tags: tags.length > 0 ? tags : undefined,
+        imageUrl: imageUrl || undefined,
+        imageId: imageId || undefined,
         audioUrl: audioUrl || undefined,
         audioId: audioId || undefined,
-        audioOriginalFilename: audioOriginalFilename || undefined 
+        audioOriginalFilename: audioOriginalFilename || undefined,
+        ageRating
       });
       if (!validationResult.success) {
         const firstError = validationResult.error.errors[0];
@@ -96,8 +145,13 @@ export default function ComposePage() {
         result = await updateWork(workId, { 
           title, 
           caption, 
+          script,
+          tags: tags.length > 0 ? tags : undefined,
+          imageUrl: imageUrl || undefined, 
+          imageId: imageId || undefined,
           audioUrl: audioUrl || undefined, 
-          audioId: audioId || undefined 
+          audioId: audioId || undefined,
+          ageRating
         }, user.uid);
         if (result.success) {
           toast.success('作品が更新されました！');
@@ -110,8 +164,13 @@ export default function ComposePage() {
           { 
             title, 
             caption, 
+            script,
+            tags: tags.length > 0 ? tags : undefined,
+            imageUrl: imageUrl || undefined, 
+            imageId: imageId || undefined,
             audioUrl: audioUrl || undefined, 
-            audioId: audioId || undefined 
+            audioId: audioId || undefined,
+            ageRating
           },
           user.uid,
           userData.username,
@@ -121,12 +180,8 @@ export default function ComposePage() {
         if (result.success) {
           toast.success('作品が作成されました！');
           // フォームリセット
-          setTitle('');
-          setCaption('');
-          setAudioUrl('');
-          setAudioId('');
-          setAudioOriginalFilename('');
-          router.push('/home');
+          resetForm();
+          router.push('/works');
         } else {
           toast.error(result.error || '作品の作成に失敗しました');
         }
@@ -140,11 +195,7 @@ export default function ComposePage() {
   };
 
   const handleCancel = () => {
-    if (isEditMode) {
-      router.push('/works');
-    } else {
-      router.push('/home');
-    }
+    router.push('/works');
   };
 
   const handleDelete = async () => {
@@ -168,6 +219,12 @@ export default function ComposePage() {
     }
   };
 
+  const handleImageDelete = () => {
+    setImageUrl('');
+    setImageId('');
+    toast.success('画像を削除しました');
+  };
+
   const handleAudioDelete = () => {
     setAudioUrl('');
     setAudioId('');
@@ -178,7 +235,7 @@ export default function ComposePage() {
   // ローディング中の表示
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="mx-8 py-8">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="animate-pulse">
             <div className="h-4 bg-gray-200 rounded w-1/4 mb-6"></div>
@@ -195,111 +252,221 @@ export default function ComposePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="mx-8 py-8">
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">
           {isEditMode ? '作品を編集' : '新しい作品'}
         </h2>
             
-            <div className="space-y-6">
-              {/* タイトル入力 */}
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                  タイトル
-                </label>
-                <Input
-                  id="title"
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="作品のタイトルを入力してください"
-                  maxLength={100}
-                  className="w-full"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {title.length}/100文字
+        {/* メインコンテンツ - レスポンシブ3カラム */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-6">
+          {/* 領域1: サムネイル画像・音声ファイル */}
+          <div className="space-y-6">
+            {/* サムネイル画像アップロード */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                サムネイル画像
+              </label>
+              <ImageFileUpload
+                onImageUpload={(url, id) => {
+                  setImageUrl(url);
+                  setImageId(id);
+                }}
+                onImageDelete={handleImageDelete}
+                currentImageUrl={imageUrl}
+                disabled={isSubmitting}
+                workId={workId || undefined}
+              />
+            </div>
+
+            {/* 音声ファイルアップロード */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                音声ファイル <span className="text-red-500">*</span>
+              </label>
+              <AudioFileUpload
+                onAudioUpload={(url, id, originalFilename) => {
+                  setAudioUrl(url);
+                  setAudioId(id);
+                  setAudioOriginalFilename(originalFilename || '');
+                }}
+                onAudioDelete={handleAudioDelete}
+                currentAudioUrl={audioUrl}
+                currentAudioOriginalFilename={audioOriginalFilename}
+                disabled={isSubmitting}
+                workId={workId || undefined}
+              />
+            </div>
+          </div>
+
+          {/* 領域2: タイトル・キャプション・タグ・年齢制限 */}
+          <div className="space-y-6">
+            {/* タイトル入力 */}
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                タイトル <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="作品のタイトルを入力してください"
+                maxLength={100}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {title.length}/100文字
+              </p>
+            </div>
+
+            {/* キャプション入力 */}
+            <div>
+              <label htmlFor="caption" className="block text-sm font-medium text-gray-700 mb-2">
+                キャプション
+              </label>
+              <TextArea
+                id="caption"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="作品の内容を入力してください..."
+                rows={6}
+                maxLength={500}
+                className="w-full resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {caption.length}/500文字
+              </p>
+            </div>
+
+            {/* タグ入力 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                タグ
+              </label>
+              <TagInput
+                tags={tags}
+                onTagsChange={setTags}
+                placeholder="タグを入力してEnterで追加（例：恋愛、SF、コメディ）"
+                maxTags={10}
+                maxTagLength={20}
+              />
+              <div className="space-y-1 mt-1">
+                <p className="text-xs text-gray-500">
+                  タグを追加すると作品の発見性が向上します
+                </p>
+                <p className="text-xs text-gray-400">
+                  使用可能文字: 日本語、英数字、！？。、・（）「」【】〜～ ハイフン アンダースコア<br/>
+                  使用不可文字: #@&lt;&gt;など特殊記号
                 </p>
               </div>
+            </div>
 
-              {/* キャプション入力 */}
-              <div>
-                <label htmlFor="caption" className="block text-sm font-medium text-gray-700 mb-2">
-                  キャプション
+            {/* 年齢制限 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                年齢制限
+              </label>
+              <div className="flex gap-6">
+                <label className="flex items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded">
+                  <input
+                    type="radio"
+                    name="ageRating"
+                    value="all"
+                    checked={ageRating === 'all'}
+                    onChange={(e) => setAgeRating(e.target.value as 'all' | '18+')}
+                    className="mr-2 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">全年齢</span>
                 </label>
-                <TextArea
-                  id="caption"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="作品の内容を入力してください..."
-                  rows={6}
-                  maxLength={500}
-                  className="w-full resize-none"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {caption.length}/500文字
-                </p>
-              </div>
-
-              {/* 音声ファイルアップロード */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  音声ファイル
+                <label className="flex items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded">
+                  <input
+                    type="radio"
+                    name="ageRating"
+                    value="18+"
+                    checked={ageRating === '18+'}
+                    onChange={(e) => setAgeRating(e.target.value as 'all' | '18+')}
+                    className="mr-2 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">R-18</span>
                 </label>
-                <AudioFileUpload
-                  onAudioUpload={(url, id, originalFilename) => {
-                    setAudioUrl(url);
-                    setAudioId(id);
-                    setAudioOriginalFilename(originalFilename || '');
-                  }}
-                  onAudioDelete={handleAudioDelete}
-                  currentAudioUrl={audioUrl}
-                  currentAudioOriginalFilename={audioOriginalFilename}
-                  disabled={isSubmitting}
-                  workId={workId || undefined}
-                />
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                作品の年齢制限を設定してください
+              </p>
+            </div>
+          </div>
 
-              {/* ボタン */}
-              <div className="pt-4 border-t">
-                <div className="flex justify-end gap-3">
-                  {isEditMode && (
-                    <Button
-                      onClick={handleCancel}
-                      disabled={isSubmitting}
-                      variant="outline"
-                      size="lg"
-                      className="min-w-[120px]"
-                    >
-                      キャンセル
-                    </Button>
-                  )}
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!title.trim() || !caption.trim() || isSubmitting}
-                    size="lg"
-                    className="min-w-[120px]"
-                  >
-                    {isSubmitting 
-                      ? (isEditMode ? '更新中...' : '投稿中...') 
-                      : (isEditMode ? '更新' : '投稿')
-                    }
-                  </Button>
-                </div>
-                
-                {/* 削除ボタン（編集モード時のみ） */}
-                {isEditMode && (
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      onClick={() => setShowDeleteModal(true)}
-                      disabled={isSubmitting || isDeleting}
-                      size="lg"
-                      className="min-w-[120px] bg-red-200 text-red-800 hover:bg-red-300 focus:ring-red-400 cursor-pointer transition-colors duration-200"
-                    >
-                      削除
-                    </Button>
-                  </div>
-                )}
-              </div>
+          {/* 領域3: 台本 */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label htmlFor="script" className="block text-sm font-medium text-gray-700">
+                台本
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setScript('')}
+                disabled={!script || isSubmitting}
+                className="text-xs px-2 py-1"
+              >
+                クリア
+              </Button>
+            </div>
+            <TextArea
+              id="script"
+              value={script}
+              onChange={(e) => setScript(e.target.value)}
+              placeholder="作品の台本を入力してください..."
+              rows={18}
+              maxLength={50000}
+              className="w-full resize-y"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {script.length}/50000文字
+            </p>
+          </div>
+        </div>
+
+        {/* ボタン */}
+        <div className="pt-4">
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={handleCancel}
+              disabled={isSubmitting}
+              variant="outline"
+              size="lg"
+              className="min-w-[120px]"
+            >
+              キャンセル
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!title.trim() || !audioUrl || isSubmitting}
+              size="lg"
+              className="min-w-[120px]"
+            >
+              {isSubmitting 
+                ? (isEditMode ? '更新中...' : '投稿中...') 
+                : (isEditMode ? '更新' : '投稿')
+              }
+            </Button>
+          </div>
+          
+          {/* 削除ボタン（編集モード時のみ） */}
+          {isEditMode && (
+            <div className="mt-3 flex justify-end">
+              <Button
+                onClick={() => setShowDeleteModal(true)}
+                disabled={isSubmitting || isDeleting}
+                size="lg"
+                className="min-w-[120px] bg-red-200 text-red-800 hover:bg-red-300 focus:ring-red-400 cursor-pointer transition-colors duration-200"
+              >
+                削除
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       

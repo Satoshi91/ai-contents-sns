@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signInAnonymously,
   GoogleAuthProvider,
+  TwitterAuthProvider,
   sendPasswordResetEmail,
   updateProfile,
   User as FirebaseUser,
@@ -14,6 +15,7 @@ import { auth, db } from './app';
 import { User } from '@/types/user';
 
 const googleProvider = new GoogleAuthProvider();
+const twitterProvider = new TwitterAuthProvider();
 
 export async function signUp(email: string, password: string, username: string, displayName: string) {
   try {
@@ -116,6 +118,47 @@ export async function signInWithGoogle() {
       await setDoc(doc(db, 'users', user.uid), userData);
 
       await setDoc(doc(db, 'usernames', username), {
+        uid: user.uid,
+      });
+    }
+
+    return { success: true, user };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function signInWithTwitter() {
+  try {
+    const result = await signInWithPopup(auth, twitterProvider);
+    const user = result.user;
+
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    
+    if (!userDoc.exists()) {
+      // TwitterのユーザーネームはscreenNameから取得、なければuidから生成
+      const twitterUsername = (result as any).additionalUserInfo?.username || 
+                             user.displayName?.replace(/\s+/g, '').toLowerCase() ||
+                             `user_${user.uid.slice(0, 8)}`;
+      
+      const userData = {
+        uid: user.uid,
+        email: user.email || null,
+        username: twitterUsername,
+        displayName: user.displayName || twitterUsername,
+        bio: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      // photoURLがnullでない場合のみ追加
+      if (user.photoURL) {
+        (userData as any).photoURL = user.photoURL;
+      }
+
+      await setDoc(doc(db, 'users', user.uid), userData);
+
+      await setDoc(doc(db, 'usernames', twitterUsername), {
         uid: user.uid,
       });
     }

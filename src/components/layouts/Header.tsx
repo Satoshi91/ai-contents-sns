@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useAgeRating } from '@/lib/contexts/AgeRatingContext';
 import { signOut } from '@/lib/firebase/auth';
 import { Button } from '@/components/ui/Button';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
-import { LoginModal } from '@/components/ui/LoginModal';
+import { AuthModal } from '@/components/ui/AuthModal';
+import { AgeRatingDropdown } from '@/components/ui/AgeRatingDropdown';
 import { useRouter } from 'next/navigation';
 import { getImageURL } from '@/lib/cloudflare/images';
 import toast from 'react-hot-toast';
-import { UserCircle, PenSquare, Menu } from 'lucide-react';
+import { UserCircle, PenSquare, Menu, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -17,9 +19,10 @@ interface HeaderProps {
 
 export function Header({ onMenuToggle }: HeaderProps) {
   const { user, userData, isAnonymous } = useAuth();
+  const { ageFilter, setAgeFilter } = useAgeRating();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -49,7 +52,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <div className="flex items-center space-x-3">
             {onMenuToggle && (
               <button
-                onClick={onMenuToggle}
+                onClick={() => {
+                  console.log('ハンバーガーメニューがクリックされました');
+                  onMenuToggle();
+                }}
                 className="cursor-pointer hover:bg-gray-100 rounded-full p-2 transition-colors duration-200"
                 aria-label="メニューを開く"
               >
@@ -60,19 +66,35 @@ export function Header({ onMenuToggle }: HeaderProps) {
               className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors duration-200 select-none"
               onClick={() => router.push('/home')}
             >
-              Twitter Clone
+              VOICARISME
             </h1>
           </div>
           <div className="flex items-center space-x-4">
+            {/* 年齢制限フィルタ */}
+            <AgeRatingDropdown 
+              value={ageFilter}
+              onChange={setAgeFilter}
+            />
+            
             {user && !isAnonymous && (
-              <Button
-                onClick={() => router.push('/compose')}
-                size="sm"
-                className="flex items-center cursor-pointer"
-              >
-                <PenSquare size={16} className="mr-2" />
-                投稿
-              </Button>
+              <>
+                <Button
+                  onClick={() => router.push('/generate')}
+                  size="sm"
+                  className="flex items-center cursor-pointer bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Sparkles size={16} className="mr-2" />
+                  生成
+                </Button>
+                <Button
+                  onClick={() => router.push('/compose')}
+                  size="sm"
+                  className="flex items-center cursor-pointer"
+                >
+                  <PenSquare size={16} className="mr-2" />
+                  投稿
+                </Button>
+              </>
             )}
             {user && !isAnonymous ? (
               <ProfileDropdown
@@ -91,7 +113,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
               />
             ) : (
               <Button
-                onClick={() => setIsLoginModalOpen(true)}
+                onClick={() => setIsAuthModalOpen(true)}
                 variant="secondary"
                 size="sm"
                 className="cursor-pointer"
@@ -102,9 +124,9 @@ export function Header({ onMenuToggle }: HeaderProps) {
           </div>
         </div>
       </div>
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
     </header>
   );

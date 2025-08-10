@@ -12,6 +12,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   isAnonymous: boolean;
+  isAdmin: boolean;
   refreshUserData: () => Promise<void>;
 }
 
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   isAnonymous: false,
+  isAdmin: false,
   refreshUserData: async () => {},
 });
 
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const refreshUserData = async () => {
     if (user) {
@@ -37,11 +40,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
-          setUserData({
+          const userData = {
             ...data,
             createdAt: data.createdAt?.toDate() || new Date(),
             updatedAt: data.updatedAt?.toDate() || new Date(),
-          } as User);
+          } as User;
+          setUserData(userData);
+          setIsAdmin(userData.role === 'admin');
         }
       } catch (err: any) {
         setError(err.message);
@@ -68,12 +73,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } as User;
             console.log('AuthContext: User data set:', userData);
             setUserData(userData);
+            setIsAdmin(userData.role === 'admin');
           } else {
             console.log('AuthContext: User document not found');
           }
         } else {
           console.log('AuthContext: No Firebase user');
           setUserData(null);
+          setIsAdmin(false);
         }
       } catch (err: any) {
         setError(err.message);
@@ -87,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, userData, loading, error, isAnonymous, refreshUserData }}>
+    <AuthContext.Provider value={{ user, userData, loading, error, isAnonymous, isAdmin, refreshUserData }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,7 +1,8 @@
 'use client';
 
-import { Home, Search, TrendingUp, ChevronLeft, Bug } from 'lucide-react';
+import { Home, Search, TrendingUp, ChevronLeft, Bug, Heart, Hash, MessageSquare, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ interface MenuItem {
   label: string;
   icon: React.ReactNode;
   href: string;
+  requireAuth?: boolean;
+  adminOnly?: boolean;
 }
 
 const menuItems: MenuItem[] = [
@@ -24,27 +27,60 @@ const menuItems: MenuItem[] = [
     href: '/home'
   },
   {
+    id: 'chat',
+    label: 'AIチャット',
+    icon: <MessageSquare size={24} />,
+    href: '/chat'
+  },
+  {
+    id: 'create-content',
+    label: 'コンテンツ投稿',
+    icon: <Plus size={24} />,
+    href: '/content/create',
+    requireAuth: true
+  },
+  {
     id: 'search',
-    label: '検索',
+    label: '検索(開発中)',
     icon: <Search size={24} />,
-    href: '/search'
+    href: '/search',
+    adminOnly: true
+  },
+  {
+    id: 'tags',
+    label: 'タグ(開発中)',
+    icon: <Hash size={24} />,
+    href: '/tags',
+    adminOnly: true
+  },
+  {
+    id: 'likes',
+    label: 'いいね一覧',
+    icon: <Heart size={24} />,
+    href: '/likes',
+    requireAuth: true
   },
   {
     id: 'ranking',
-    label: 'ランキング',
+    label: 'ランキング(開発中)',
     icon: <TrendingUp size={24} />,
-    href: '/ranking'
+    href: '/ranking',
+    adminOnly: true
   },
   {
     id: 'debug',
-    label: 'デバッグ',
+    label: 'デバッグ(管理者)',
     icon: <Bug size={24} />,
-    href: '/debug'
+    href: '/debug',
+    adminOnly: true
   }
 ];
 
 export function Sidebar({ isOpen, onClose, onToggle }: SidebarProps) {
   const router = useRouter();
+  const { user, isAnonymous, isAdmin } = useAuth();
+  
+  console.log('Sidebar render, isOpen:', isOpen);
 
   const handleItemClick = (href: string) => {
     router.push(href);
@@ -88,7 +124,7 @@ export function Sidebar({ isOpen, onClose, onToggle }: SidebarProps) {
             className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
             aria-label="サイドバーを閉じる"
           >
-            <h2 className="text-lg font-semibold text-gray-900">Twitter Clone</h2>
+            <h2 className="text-lg font-semibold text-gray-900">VOICARISME</h2>
             <ChevronLeft size={20} />
           </button>
         </div>
@@ -96,7 +132,19 @@ export function Sidebar({ isOpen, onClose, onToggle }: SidebarProps) {
         {/* メニュー項目 */}
         <nav className="p-4">
           <ul className="space-y-2">
-            {menuItems.map((item) => (
+            {menuItems
+              .filter(item => {
+                // 認証が必要な項目の判定
+                if (item.requireAuth && (!user || isAnonymous)) {
+                  return false;
+                }
+                // 管理者専用項目の判定
+                if (item.adminOnly && !isAdmin) {
+                  return false;
+                }
+                return true;
+              })
+              .map((item) => (
               <li key={item.id}>
                 <button
                   onClick={() => handleItemClick(item.href)}

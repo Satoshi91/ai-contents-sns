@@ -4,7 +4,7 @@ import Image from 'next/image';
 interface AvatarProps {
   src?: string | null;
   alt?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
 }
 
@@ -14,6 +14,7 @@ export function Avatar({ src, alt = 'Avatar', size = 'md', className = '' }: Ava
     md: 'w-10 h-10',
     lg: 'w-12 h-12',
     xl: 'w-16 h-16',
+    '2xl': 'w-32 h-32',
   };
 
   const placeholderSizes = {
@@ -21,6 +22,7 @@ export function Avatar({ src, alt = 'Avatar', size = 'md', className = '' }: Ava
     md: 'text-sm',
     lg: 'text-base',
     xl: 'text-xl',
+    '2xl': 'text-3xl',
   };
 
   if (src) {

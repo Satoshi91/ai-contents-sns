@@ -4,10 +4,14 @@ import { Work } from '@/types/work';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { FollowButton } from '@/components/ui/FollowButton';
 import { Calendar, Edit2, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { getImageURL } from '@/lib/cloudflare/images';
+import { useFollowStats } from '@/lib/hooks/useFollow';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface ProfileDisplayProps {
   user: User;
@@ -17,34 +21,47 @@ interface ProfileDisplayProps {
 }
 
 export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: ProfileDisplayProps) {
+  const { user: currentUser } = useAuth();
+  const router = useRouter();
+  const { followerCount, followingCount, loading: statsLoading } = useFollowStats(user.uid);
+  
   const profileImageUrl = user.photoURL?.includes('profile-') 
     ? getImageURL(user.photoURL, 'profile')
     : user.photoURL;
 
+  const handleFollowersClick = () => {
+    router.push(`/profile/${user.username}/followers`);
+  };
+
+  const handleFollowingClick = () => {
+    router.push(`/profile/${user.username}/following`);
+  };
+
   return (
     <div>
-      <div className="h-32 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-      
-      <div className="px-6 pb-6">
-        <div className="flex justify-between items-start -mt-16 mb-4">
+      <div className="px-6 pt-6 pb-6">
+        <div className="flex justify-between items-start mb-4">
           <Avatar
             src={profileImageUrl}
             alt={user.displayName}
-            size="xl"
+            size="2xl"
             className="border-4 border-white"
           />
           
-          {isOwnProfile && (
-            <Button
-              onClick={onEditClick}
-              variant="secondary"
-              size="sm"
-              className="mt-20"
-            >
-              <Edit2 size={16} className="mr-1" />
-              プロフィール編集
-            </Button>
-          )}
+          <div className="mt-4">
+            {isOwnProfile ? (
+              <Button
+                onClick={onEditClick}
+                variant="secondary"
+                size="sm"
+              >
+                <Edit2 size={16} className="mr-1" />
+                プロフィール編集
+              </Button>
+            ) : currentUser && (
+              <FollowButton targetUserId={user.uid} />
+            )}
+          </div>
         </div>
 
         <div className="mb-4">
@@ -70,6 +87,26 @@ export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: Profi
             <div className="text-2xl font-bold text-gray-900">{works.length}</div>
             <div className="text-sm text-gray-500">作品</div>
           </div>
+          
+          <button 
+            onClick={handleFollowersClick}
+            className="text-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded transition-colors"
+          >
+            <div className="text-2xl font-bold text-gray-900">
+              {statsLoading ? '...' : followerCount}
+            </div>
+            <div className="text-sm text-gray-500">フォロワー</div>
+          </button>
+          
+          <button 
+            onClick={handleFollowingClick}
+            className="text-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded transition-colors"
+          >
+            <div className="text-2xl font-bold text-gray-900">
+              {statsLoading ? '...' : followingCount}
+            </div>
+            <div className="text-sm text-gray-500">フォロー中</div>
+          </button>
         </div>
       </div>
 
