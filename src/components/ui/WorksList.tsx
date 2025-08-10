@@ -5,12 +5,13 @@ import { Work } from '@/types/work';
 import { WorksGridConfig, WorksCategory } from '@/types/worksSection';
 import { WorksCard } from '@/components/ui/WorksCard';
 import { Loader2 } from 'lucide-react';
+import Masonry from 'react-masonry-css';
 
 interface WorksListProps {
   works: Work[];
   loading?: boolean;
   error?: string | null;
-  layout?: 'grid' | 'list';
+  layout?: 'grid' | 'list' | 'masonry';
   gridCols?: WorksGridConfig;
   showEmpty?: boolean;
   emptyMessage?: string;
@@ -40,6 +41,13 @@ const DEFAULT_GRID_COLS: WorksGridConfig = {
   md: 3,
   lg: 4,
   xl: 4
+};
+
+const DEFAULT_MASONRY_BREAKPOINTS = {
+  default: 4,
+  1024: 3,
+  768: 2,
+  640: 1
 };
 
 function getGridClasses(gridCols: WorksGridConfig = DEFAULT_GRID_COLS): string {
@@ -178,6 +186,45 @@ export const WorksList = React.memo<WorksListProps>(({
           );
         })}
       </div>
+    );
+  }
+
+  // マサリー表示
+  if (layout === 'masonry') {
+    return (
+      <Masonry
+        breakpointCols={DEFAULT_MASONRY_BREAKPOINTS}
+        className="masonry-grid"
+        columnClassName="masonry-grid_column"
+      >
+        {works.map((work) => {
+          const likeState = likeStates[work.id];
+          // likeStateがある場合はそれを優先、ない場合はisWorkLikedを使用
+          const isLiked = likeState?.isLiked ?? (isWorkLiked ? isWorkLiked(work.id) : false);
+          
+          return (
+            <div key={work.id}>
+              <WorksCard
+                work={work}
+                layout={layout}
+                works={works}
+                playlistTitle={playlistTitle}
+                playlistCategory={playlistCategory}
+                playlistUserId={playlistUserId}
+                currentUserId={currentUserId}
+                onEditClick={onEditClick}
+                onLike={onLike}
+                onUserClick={onUserClick}
+                onWorkClick={onWorkClick}
+                onTagClick={onTagClick}
+                isLiked={isLiked}
+                likeCount={likeState?.likeCount}
+                isLikeLoading={likeState?.isLoading || false}
+              />
+            </div>
+          );
+        })}
+      </Masonry>
     );
   }
 

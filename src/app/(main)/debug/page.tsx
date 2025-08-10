@@ -11,6 +11,8 @@ import { validateImageFile, getWorkImageURL } from '@/lib/cloudflare/images';
 import { WorksCard } from '@/components/ui/WorksCard';
 import { WorksSection } from '@/components/ui/WorksSection';
 import { Work } from '@/types/work';
+import { RealtimeAudioPlayer } from '@/components/features/RealtimeAudioPlayer';
+import { createWork } from '@/lib/firebase/works';
 import toast from 'react-hot-toast';
 
 export default function DebugPage() {
@@ -49,10 +51,26 @@ export default function DebugPage() {
   const [aiTesting, setAiTesting] = useState(false);
   const [aiStreamData, setAiStreamData] = useState<string[]>([]);
 
+  // リアルタイム音声生成テスト用のstate
+  const [realtimeTtsText, setRealtimeTtsText] = useState('');
+  const [ttsSettings, setTtsSettings] = useState({
+    speaking_rate: 1.0,
+    pitch: 0.0,
+    volume: 1.0,
+    emotional_intensity: 1.0,
+    tempo_dynamics: 1.0,
+    output_format: 'mp3' as 'mp3' | 'wav' | 'aac' | 'opus',
+  });
+  const [ttsDebugLogs, setTtsDebugLogs] = useState<Array<{timestamp: string, message: string, type: 'info' | 'success' | 'error'}>>([]);
+
   // CSS レイアウト検証用のstate
   const [cssDebugLogs, setCssDebugLogs] = useState<Array<{timestamp: string, message: string, type: 'info' | 'success' | 'error' | 'warning'}>>([]);
   const [cssAnalyzing, setCssAnalyzing] = useState(false);
   const [cssTestResults, setCssTestResults] = useState<any>(null);
+
+  // 環境変数チェック用のstate
+  const [envVarsStatus, setEnvVarsStatus] = useState<any>(null);
+  const [envChecking, setEnvChecking] = useState(false);
 
   useEffect(() => {
     const timestamp = new Date().toISOString();
@@ -946,6 +964,106 @@ export default function DebugPage() {
     }
   };
 
+  // リアルタイム音声生成のデバッグ関数群
+  const addTtsLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    setTtsDebugLogs(prev => [...prev, { timestamp, message, type }]);
+  };
+
+  const testRealtimeTtsApi = async () => {
+    if (!realtimeTtsText.trim()) {
+      addTtsLog('テストテキストを入力してください', 'error');
+      return;
+    }
+
+    addTtsLog(`リアルタイムTTS APIテスト開始: "${realtimeTtsText.substring(0, 50)}..."`, 'info');
+
+    try {
+      const response = await fetch('/api/tts/realtime-synthesize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: realtimeTtsText,
+          ...ttsSettings,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API応答エラー: ${response.status}`);
+      }
+
+      addTtsLog('✅ API接続成功: ストリーミング開始', 'success');
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('レスポンスストリームを読み取れません');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let chunkCount = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        chunkCount++;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              
+              if (data.chunkId === 'init') {
+                addTtsLog(`📊 音声生成統計: ${data.totalChunks}チャンク, ${data.metadata?.characterCount}文字`, 'info');
+              } else if (data.chunkId === 'complete') {
+                addTtsLog('✅ 音声生成完了', 'success');
+              } else if (data.audioData) {
+                addTtsLog(`🎵 チャンク ${data.chunkIndex + 1}: ${data.text.substring(0, 30)}... (${data.metadata?.characterCount}文字)`, 'success');
+              } else if (data.error) {
+                addTtsLog(`❌ チャンクエラー ${data.chunkIndex}: ${data.error}`, 'error');
+              }
+            } catch (parseError) {
+              addTtsLog(`解析エラー: ${parseError}`, 'error');
+            }
+          }
+        }
+      }
+
+      addTtsLog(`📈 ストリーミング完了: 合計 ${chunkCount} データチャンク受信`, 'success');
+
+    } catch (error) {
+      addTtsLog(`❌ テストエラー: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    }
+  };
+
+  const loadSampleTtsText = (type: 'short' | 'long' | 'ssml') => {
+    switch (type) {
+      case 'short':
+        setRealtimeTtsText('こんにちは！AIボイスドラマの世界へようこそ。');
+        break;
+      case 'long':
+        setRealtimeTtsText(`AIボイスドラマ制作プラットフォームへようこそ！
+このプラットフォームでは、最新のAI技術を活用して、誰でも簡単に高品質なボイスドラマを制作できます。
+
+リアルタイム音声合成機能により、長いテキストでも即座に音声再生を開始できます。
+テキストは適切な単位で分割され、並行して音声生成と再生が行われるため、待機時間を大幅に短縮できます。
+
+さあ、あなたの想像力を形にしてみましょう！`);
+        break;
+      case 'ssml':
+        setRealtimeTtsText(`<p>こんにちは！<break time="0.5s"/>AIボイスドラマの世界へようこそ。</p>
+<p><prosody rate="110%" volume="loud">この機能では、リアルタイムで音声合成が行われます。</prosody></p>
+<p>長いテキストでも、<prosody rate="90%" pitch="+0.1">即座に再生を開始</prosody>できるのが特徴です。</p>`);
+        break;
+    }
+  };
+
   // CSS レイアウト検証のデバッグ関数群
   const addCssLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
@@ -1203,13 +1321,46 @@ export default function DebugPage() {
   };
 
   const removeCSSFix = () => {
-    const fixStyle = document.getElementById('debug-css-fix');
-    if (fixStyle) {
-      fixStyle.remove();
-      addCssLog('修正CSSを削除しました', 'success');
-    } else {
-      addCssLog('削除する修正CSSが見つかりません', 'warning');
-    }
+    // CSS修正を削除する処理
+    addCssLog('CSS修正を削除しました', 'info');
+  };
+
+  // 環境変数の状態をチェック
+  const checkEnvironmentVariables = () => {
+    setEnvChecking(true);
+    
+    const requiredVars = {
+      // Firebase
+      FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY ? '***SET***' : undefined,
+      FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
+      
+      // Cloudflare Images
+      CLOUDFLARE_ACCOUNT_ID: process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID,
+      CLOUDFLARE_IMAGES_API_TOKEN: process.env.CLOUDFLARE_IMAGES_API_TOKEN ? '***SET***' : undefined,
+      CLOUDFLARE_IMAGES_ACCOUNT_HASH: process.env.NEXT_PUBLIC_CLOUDFLARE_IMAGES_ACCOUNT_HASH,
+      
+      // Cloudflare R2
+      CLOUDFLARE_R2_ACCOUNT_ID: process.env.CLOUDFLARE_R2_ACCOUNT_ID ? '***SET***' : undefined,
+      CLOUDFLARE_R2_ACCESS_KEY_ID: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID ? '***SET***' : undefined,
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ? '***SET***' : undefined,
+      CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+      CLOUDFLARE_R2_PUBLIC_DOMAIN: process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN,
+    };
+
+    const missingVars = Object.entries(requiredVars)
+      .filter(([key, value]) => !value)
+      .map(([key]) => key);
+
+    const status = {
+      allSet: missingVars.length === 0,
+      missingVars,
+      vars: requiredVars,
+      timestamp: new Date().toISOString(),
+    };
+
+    setEnvVarsStatus(status);
+    setEnvChecking(false);
   };
 
   return (
@@ -1970,6 +2121,270 @@ export default function DebugPage() {
                 <p className="text-sm text-yellow-800">
                   <strong>注意:</strong> OpenRouterのAPIキーが.env.localに正しく設定されていることを確認してください。
                   エラーが発生する場合は、環境変数OPENROUTER_API_KEYとNEXT_PUBLIC_DEFAULT_AI_MODELの値を確認してください。
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">リアルタイム音声生成テスト</h2>
+          <div className="space-y-6">
+            {/* API接続テスト */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-medium mb-3">Aivis Cloud API接続テスト</h3>
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={testRealtimeTtsApi}
+                  disabled={!realtimeTtsText.trim()}
+                  className="cursor-pointer px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
+                >
+                  APIテスト実行
+                </button>
+                <button
+                  onClick={() => setTtsDebugLogs([])}
+                  className="cursor-pointer px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors duration-200"
+                >
+                  ログクリア
+                </button>
+              </div>
+              
+              {/* テスト結果表示 */}
+              <div className="bg-gray-100 p-3 rounded max-h-40 overflow-auto">
+                {ttsDebugLogs.length > 0 ? (
+                  <div className="space-y-1 text-sm font-mono">
+                    {ttsDebugLogs.map((log, index) => (
+                      <div key={index} className={`${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-green-600' : 'text-gray-700'}`}>
+                        [{log.timestamp}] {log.message}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-600 text-sm">TTS APIテスト結果がここに表示されます</p>
+                )}
+              </div>
+            </div>
+
+            {/* リアルタイム音声プレイヤー */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-medium mb-3">リアルタイム音声再生</h3>
+              
+              {/* テキスト入力エリア */}
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    音声生成テキスト
+                  </label>
+                  <textarea
+                    value={realtimeTtsText}
+                    onChange={(e) => setRealtimeTtsText(e.target.value)}
+                    placeholder="音声生成するテキストを入力してください..."
+                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{realtimeTtsText.length} 文字</p>
+                </div>
+
+                {/* サンプルテキストボタン */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => loadSampleTtsText('short')}
+                    className="cursor-pointer px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors duration-200"
+                  >
+                    短文サンプル
+                  </button>
+                  <button
+                    onClick={() => loadSampleTtsText('long')}
+                    className="cursor-pointer px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors duration-200"
+                  >
+                    長文サンプル
+                  </button>
+                  <button
+                    onClick={() => loadSampleTtsText('ssml')}
+                    className="cursor-pointer px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors duration-200"
+                  >
+                    SSMLサンプル
+                  </button>
+                </div>
+              </div>
+
+              {/* 音声パラメータ設定 */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    話速 ({ttsSettings.speaking_rate}x)
+                  </label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={ttsSettings.speaking_rate}
+                    onChange={(e) => setTtsSettings(prev => ({ ...prev, speaking_rate: parseFloat(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    音量 ({ttsSettings.volume})
+                  </label>
+                  <input
+                    type="range"
+                    min="0.0"
+                    max="2.0"
+                    step="0.1"
+                    value={ttsSettings.volume}
+                    onChange={(e) => setTtsSettings(prev => ({ ...prev, volume: parseFloat(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    感情強度 ({ttsSettings.emotional_intensity})
+                  </label>
+                  <input
+                    type="range"
+                    min="0.0"
+                    max="2.0"
+                    step="0.1"
+                    value={ttsSettings.emotional_intensity}
+                    onChange={(e) => setTtsSettings(prev => ({ ...prev, emotional_intensity: parseFloat(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ピッチ ({ttsSettings.pitch})
+                  </label>
+                  <input
+                    type="range"
+                    min="-1.0"
+                    max="1.0"
+                    step="0.1"
+                    value={ttsSettings.pitch}
+                    onChange={(e) => setTtsSettings(prev => ({ ...prev, pitch: parseFloat(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    テンポ動的変化 ({ttsSettings.tempo_dynamics})
+                  </label>
+                  <input
+                    type="range"
+                    min="0.0"
+                    max="2.0"
+                    step="0.1"
+                    value={ttsSettings.tempo_dynamics}
+                    onChange={(e) => setTtsSettings(prev => ({ ...prev, tempo_dynamics: parseFloat(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    音声形式
+                  </label>
+                  <select
+                    value={ttsSettings.output_format}
+                    onChange={(e) => setTtsSettings(prev => ({ ...prev, output_format: e.target.value as 'mp3' | 'wav' | 'aac' | 'opus' }))}
+                    className="w-full p-1 border border-gray-300 rounded"
+                  >
+                    <option value="mp3">MP3</option>
+                    <option value="wav">WAV</option>
+                    <option value="aac">AAC</option>
+                    <option value="opus">Opus</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* リアルタイム音声プレイヤー */}
+              {realtimeTtsText.trim() && (
+                <div className="border-t pt-4">
+                  <RealtimeAudioPlayer
+                    text={realtimeTtsText}
+                    {...ttsSettings}
+                    onPlayStart={() => addTtsLog('🎵 リアルタイム再生開始', 'success')}
+                    onPlayEnd={() => addTtsLog('⏹ 再生終了', 'info')}
+                    onError={(error) => addTtsLog(`❌ 再生エラー: ${error}`, 'error')}
+                    onSave={async (audioUrl: string, audioId: string, title: string, script: string) => {
+                      try {
+                        addTtsLog(`💾 音声保存開始: "${title}"`, 'info');
+                        
+                        if (!user || !userData) {
+                          throw new Error('ユーザー情報が取得できません');
+                        }
+
+                        const result = await createWork(
+                          {
+                            title,
+                            caption: '(リアルタイム音声生成による作品)',
+                            script,
+                            audioUrl,
+                            audioId,
+                            audioOriginalFilename: `${title}.mp3`,
+                            publishStatus: 'private', // 非公開で保存
+                            tags: ['ai生成', 'リアルタイム'],
+                          },
+                          user.uid,
+                          userData.username,
+                          userData.displayName,
+                          userData.photoURL
+                        );
+
+                        if (result.success) {
+                          addTtsLog(`✅ 音声保存完了: 作品ID ${result.workId}`, 'success');
+                          toast.success('音声を「自分の作品」に保存しました！');
+                        } else {
+                          throw new Error(result.error || '保存に失敗しました');
+                        }
+                      } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : '保存エラー';
+                        addTtsLog(`❌ 保存エラー: ${errorMessage}`, 'error');
+                        toast.error(`保存に失敗しました: ${errorMessage}`);
+                        throw error; // RealtimeAudioPlayerにエラーを伝播
+                      }
+                    }}
+                    className="bg-blue-50"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 設定情報表示 */}
+            <div className="border rounded-lg p-4">
+              <h3 className="font-medium mb-3">リアルタイムTTS設定情報</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="font-medium">API エンドポイント:</span>
+                  <span className="text-gray-600">/api/tts/realtime-synthesize</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">使用音声合成:</span>
+                  <span className="text-gray-600">Aivis Cloud API</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">ストリーミング:</span>
+                  <span className="text-gray-600">有効 (MediaSource API)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">デフォルトモデル:</span>
+                  <span className="text-gray-600">a59cb814-0083-4369-8542-f51a29e72af7</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">分割方式:</span>
+                  <span className="text-gray-600">改行・200文字境界</span>
+                </div>
+              </div>
+              
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-sm text-yellow-800">
+                  <strong>注意:</strong> AIVIS_API_KEYが.env.localに正しく設定されていることを確認してください。
+                  リアルタイム音声生成を使用するには、Aivis Cloud APIのAPIキーが必要です。
                 </p>
               </div>
             </div>

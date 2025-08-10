@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AudioContextProvider } from '@/components/features/GlobalAudioPlayer/AudioContextProvider';
 import { PlayerContainer } from '@/components/features/GlobalAudioPlayer/PlayerContainer';
 import { AgeRatingProvider } from '@/lib/contexts/AgeRatingContext';
+import { AuthModal } from '@/components/ui/AuthModal';
 
 export default function MainLayout({
   children,
@@ -14,6 +15,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const toggleSidebar = () => {
     console.log('toggleSidebar called, current state:', isSidebarOpen);
@@ -25,7 +27,10 @@ export default function MainLayout({
       <AgeRatingProvider>
         <AudioContextProvider>
           <div className="min-h-screen bg-gray-50">
-            <Header onMenuToggle={toggleSidebar} />
+            <Header 
+              onMenuToggle={toggleSidebar} 
+              onLoginClick={() => setIsAuthModalOpen(true)}
+            />
             
             <div className="flex pt-16">
               <Sidebar 
@@ -43,6 +48,12 @@ export default function MainLayout({
             
             {/* グローバル音声プレイヤー */}
             <PlayerContainer />
+            
+            {/* ログインモーダル */}
+            <AuthModal
+              isOpen={isAuthModalOpen}
+              onClose={() => setIsAuthModalOpen(false)}
+            />
           </div>
         </AudioContextProvider>
       </AgeRatingProvider>

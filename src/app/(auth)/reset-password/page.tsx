@@ -59,11 +59,11 @@ export default function ResetPasswordPage() {
               メールボックスをご確認ください。
             </p>
             <Link
-              href="/login"
-              className="mt-4 inline-flex items-center text-blue-600 hover:text-blue-500"
+              href="/home"
+              className="mt-4 inline-flex items-center text-blue-600 hover:text-blue-500 cursor-pointer transition-colors duration-200"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              ログインページへ戻る
+              ホームに戻る
             </Link>
           </div>
         </div>
@@ -104,11 +104,11 @@ export default function ResetPasswordPage() {
 
           <div className="text-center">
             <Link
-              href="/login"
-              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-500"
+              href="/home"
+              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-500 cursor-pointer transition-colors duration-200"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              ログインページへ戻る
+              ホームに戻る
             </Link>
           </div>
         </form>

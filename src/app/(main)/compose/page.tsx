@@ -17,6 +17,7 @@ import { createWork, updateWork, getWork, deleteWork } from '@/lib/firebase/work
 import { createWorkSchema } from '@/lib/validations/work';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ContentType } from '@/types/content';
+import { PublishStatus } from '@/types/work';
 import toast from 'react-hot-toast';
 
 export default function ComposePage() {
@@ -33,6 +34,7 @@ export default function ComposePage() {
   const [audioId, setAudioId] = useState('');
   const [audioOriginalFilename, setAudioOriginalFilename] = useState('');
   const [ageRating, setAgeRating] = useState<'all' | '18+'>('all');
+  const [publishStatus, setPublishStatus] = useState<PublishStatus>('public');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -55,6 +57,7 @@ export default function ComposePage() {
     setAudioId('');
     setAudioOriginalFilename('');
     setAgeRating('all');
+    setPublishStatus('public');
   };
 
   // 新規投稿モードに変わったときのフォームリセット
@@ -71,7 +74,7 @@ export default function ComposePage() {
       
       setIsLoading(true);
       try {
-        const work = await getWork(workId);
+        const work = await getWork(workId, user?.uid);
         if (work) {
           // 権限チェック
           if (user && work.uid !== user.uid) {
@@ -90,6 +93,7 @@ export default function ComposePage() {
           setAudioId(work.audioId || '');
           setAudioOriginalFilename(work.audioOriginalFilename || '');
           setAgeRating(work.contentRating === '18+' ? '18+' : 'all');
+          setPublishStatus(work.publishStatus || 'public');
           
           // contentTypeの設定
           if (work.contentType && work.contentType !== 'legacy') {
@@ -203,7 +207,8 @@ export default function ComposePage() {
           audioId: audioId || undefined,
           audioOriginalFilename: audioOriginalFilename || undefined,
           contentType: contentType === 'mixed' ? undefined : contentType, // mixedの場合は自動判定させる
-          ageRating
+          ageRating,
+          publishStatus
         }, user.uid);
         if (result.success) {
           toast.success('作品が更新されました！');
@@ -224,7 +229,8 @@ export default function ComposePage() {
             audioId: audioId || undefined,
             audioOriginalFilename: audioOriginalFilename || undefined,
             contentType: contentType === 'mixed' ? undefined : contentType, // mixedの場合は自動判定させる
-            ageRating
+            ageRating,
+            publishStatus
           },
           user.uid,
           userData.username,
@@ -334,6 +340,7 @@ export default function ComposePage() {
               audioId={audioId}
               audioOriginalFilename={audioOriginalFilename}
               ageRating={ageRating}
+              publishStatus={publishStatus}
               onTitleChange={setTitle}
               onDescriptionChange={setCaption}
               onTagsChange={setTags}
@@ -348,6 +355,7 @@ export default function ComposePage() {
                 setAudioOriginalFilename('');
               }}
               onAgeRatingChange={setAgeRating}
+              onPublishStatusChange={setPublishStatus}
               disabled={isSubmitting}
               workId={workId || undefined}
             />
@@ -360,11 +368,13 @@ export default function ComposePage() {
               scriptText={script}
               tags={tags}
               ageRating={ageRating}
+              publishStatus={publishStatus}
               onTitleChange={setTitle}
               onDescriptionChange={setCaption}
               onScriptTextChange={setScript}
               onTagsChange={setTags}
               onAgeRatingChange={setAgeRating}
+              onPublishStatusChange={setPublishStatus}
               disabled={isSubmitting}
             />
           )}
@@ -377,6 +387,7 @@ export default function ComposePage() {
               imageUrl={imageUrl}
               imageId={imageId}
               ageRating={ageRating}
+              publishStatus={publishStatus}
               onTitleChange={setTitle}
               onDescriptionChange={setCaption}
               onTagsChange={setTags}
@@ -389,6 +400,7 @@ export default function ComposePage() {
                 setImageId('');
               }}
               onAgeRatingChange={setAgeRating}
+              onPublishStatusChange={setPublishStatus}
               disabled={isSubmitting}
               workId={workId || undefined}
             />
@@ -530,6 +542,42 @@ export default function ComposePage() {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     作品の年齢制限を設定してください
+                  </p>
+                </div>
+
+                {/* 公開設定 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    公開設定
+                  </label>
+                  <div className="flex gap-6">
+                    <label className="flex items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded">
+                      <input
+                        type="radio"
+                        name="publishStatus"
+                        value="public"
+                        checked={publishStatus === 'public'}
+                        onChange={(e) => setPublishStatus(e.target.value as PublishStatus)}
+                        disabled={isSubmitting}
+                        className="mr-2 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">公開</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded">
+                      <input
+                        type="radio"
+                        name="publishStatus"
+                        value="private"
+                        checked={publishStatus === 'private'}
+                        onChange={(e) => setPublishStatus(e.target.value as PublishStatus)}
+                        disabled={isSubmitting}
+                        className="mr-2 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">非公開</span>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    公開: みんなに表示されます / 非公開: 自分だけが確認できます
                   </p>
                 </div>
               </div>

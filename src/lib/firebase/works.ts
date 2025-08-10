@@ -124,6 +124,7 @@ export const createWork = async (
       tagNames,
       isR18Work,
       contentRating,
+      publishStatus: input.publishStatus || 'public', // デフォルトは公開
       imageUrl: input.imageUrl || null,
       imageId: input.imageId || null,
       audioUrl: input.audioUrl || null,
@@ -152,7 +153,7 @@ export const createWork = async (
   }
 };
 
-export const getWork = async (workId: string): Promise<Work | null> => {
+export const getWork = async (workId: string, currentUserId?: string): Promise<Work | null> => {
   try {
     const workDoc = await getDoc(doc(db, 'works', workId));
     
@@ -161,6 +162,16 @@ export const getWork = async (workId: string): Promise<Work | null> => {
     }
 
     const data = workDoc.data();
+    const publishStatus = data.publishStatus || 'public'; // 既存データはpublicとして扱う
+    
+    // 非公開作品の場合、作品の所有者のみアクセス可能
+    if (publishStatus === 'private') {
+      const isOwnWork = currentUserId && currentUserId === data.uid;
+      if (!isOwnWork) {
+        return null; // 非公開作品で所有者でない場合はnullを返す
+      }
+    }
+    
     return {
       id: workDoc.id,
       uid: data.uid,
@@ -176,6 +187,7 @@ export const getWork = async (workId: string): Promise<Work | null> => {
       tagNames: data.tagNames || [],
       isR18Work: data.isR18Work || false,
       contentRating: data.contentRating || 'all',
+      publishStatus: publishStatus,
       imageUrl: data.imageUrl || undefined,
       imageId: data.imageId || undefined,
       audioUrl: data.audioUrl || undefined,
@@ -196,26 +208,67 @@ export const getWork = async (workId: string): Promise<Work | null> => {
 export const getUserWorks = async (
   userId: string,
   limitCount: number = 10,
-  lastDoc?: DocumentSnapshot
+  lastDoc?: DocumentSnapshot,
+  currentUserId?: string // 現在ログイン中のユーザーID（自分の作品を見る場合）
 ): Promise<Work[]> => {
   try {
+    console.log('=== getUserWorks 開始 ===');
+    console.log('userId:', userId);
+    console.log('currentUserId:', currentUserId);
+    console.log('limitCount:', limitCount);
+    
     const worksCollection = collection(db, 'works');
-    let q = query(
-      worksCollection,
-      where('uid', '==', userId),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    );
+    
+    // 自分の作品を見る場合は全て表示、他人の作品は公開のみ
+    const isOwnProfile = currentUserId && currentUserId === userId;
+    console.log('isOwnProfile:', isOwnProfile);
+    
+    let q;
+    
+    if (isOwnProfile) {
+      // 自分の作品を見る場合は公開設定に関係なく全て表示
+      console.log('自分のプロフィール: 全作品を取得');
+      q = query(
+        worksCollection,
+        where('uid', '==', userId),
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
+      );
+    } else {
+      // 他人の作品を見る場合は公開のみ表示（既存データ対応で条件を緩和）
+      console.log('他人のプロフィール: 公開作品のみ取得');
+      q = query(
+        worksCollection,
+        where('uid', '==', userId),
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
+      );
+      // 注意: 他人のプライベート作品のフィルタリングは一旦アプリケーション層で処理
+    }
 
     if (lastDoc) {
       q = query(q, startAfter(lastDoc));
     }
 
+    console.log('Firestoreクエリ実行中...');
     const querySnapshot = await getDocs(q);
+    console.log('クエリ結果件数:', querySnapshot.size);
+    
     const works: Work[] = [];
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
+      const publishStatus = data.publishStatus || 'public'; // 既存データはpublicとして扱う
+      
+      console.log(`作品ID: ${doc.id}, タイトル: ${data.title}, 公開状態: ${publishStatus}`);
+      
+      // 他人の作品の場合はプライベート作品を除外
+      if (!isOwnProfile && publishStatus === 'private') {
+        console.log(`スキップ: 他人の非公開作品 (${doc.id})`);
+        return; // スキップ
+      }
+      
+      console.log(`追加: 作品 (${doc.id})`);
       works.push({
         id: doc.id,
         uid: data.uid,
@@ -231,18 +284,23 @@ export const getUserWorks = async (
         tagNames: data.tagNames || [],
         isR18Work: data.isR18Work || false,
         contentRating: data.contentRating || 'all',
+        publishStatus: publishStatus,
         imageUrl: data.imageUrl || undefined,
         imageId: data.imageId || undefined,
         audioUrl: data.audioUrl || undefined,
         audioId: data.audioId || undefined,
+        audioOriginalFilename: data.audioOriginalFilename || undefined,
         likeCount: data.likeCount || 0,
         replyCount: data.replyCount || 0,
+        commentCount: data.commentCount || 0,
         retweetCount: data.retweetCount || 0,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
       });
     });
 
+    console.log('最終的な作品数:', works.length);
+    console.log('=== getUserWorks 完了 ===');
     return works;
   } catch (error) {
     console.error('ユーザー作品取得エラー:', error);
@@ -256,6 +314,8 @@ export const getAllWorks = async (
 ): Promise<Work[]> => {
   try {
     const worksCollection = collection(db, 'works');
+    
+    // publishStatusフィールドの有無に関係なく全データを取得し、アプリケーション層でフィルタリング
     let q = query(
       worksCollection,
       orderBy('createdAt', 'desc'),
@@ -271,6 +331,13 @@ export const getAllWorks = async (
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
+      const publishStatus = data.publishStatus || 'public'; // 既存データはpublicとして扱う
+      
+      // プライベート作品は除外
+      if (publishStatus === 'private') {
+        return; // スキップ
+      }
+      
       works.push({
         id: doc.id,
         uid: data.uid,
@@ -286,6 +353,7 @@ export const getAllWorks = async (
         tagNames: data.tagNames || [],
         isR18Work: data.isR18Work || false,
         contentRating: data.contentRating || 'all',
+        publishStatus: publishStatus,
         imageUrl: data.imageUrl || undefined,
         imageId: data.imageId || undefined,
         audioUrl: data.audioUrl || undefined,
@@ -359,6 +427,7 @@ export const updateWork = async (
       tagNames,
       isR18Work,
       contentRating,
+      publishStatus: input.publishStatus || 'public', // デフォルトは公開
       imageUrl: input.imageUrl || null,
       imageId: input.imageId || null,
       audioUrl: input.audioUrl || null,

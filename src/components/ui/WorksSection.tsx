@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Grid, List } from 'lucide-react';
+import { Grid, List, LayoutDashboard } from 'lucide-react';
 import { WorksCategory, WorksSectionConfig, WorksGridConfig } from '@/types/worksSection';
 import { WorksList } from '@/components/ui/WorksList';
 import { useWorksSection } from '@/lib/hooks/useWorksSection';
@@ -13,7 +13,7 @@ interface WorksSectionProps {
   config?: Partial<WorksSectionConfig>;
   
   // 表示制御
-  layout?: 'grid' | 'list';
+  layout?: 'grid' | 'list' | 'masonry';
   showHeader?: boolean;
   showMoreHref?: string;
   showMoreLabel?: string;
@@ -60,7 +60,7 @@ export const WorksSection = React.memo(function WorksSection({
   likeStates = {},
   isWorkLiked
 }: WorksSectionProps) {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>(layout);
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'masonry'>(layout);
 
   const {
     works,
@@ -71,7 +71,8 @@ export const WorksSection = React.memo(function WorksSection({
     category,
     config,
     enabled: true,
-    skipR18Filter
+    skipR18Filter,
+    currentUserId
   });
 
   const renderHeader = () => {
@@ -108,6 +109,17 @@ export const WorksSection = React.memo(function WorksSection({
                 title="リスト表示"
               >
                 <List size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('masonry')}
+                className={`p-2 rounded-md transition-all duration-200 cursor-pointer ${
+                  viewMode === 'masonry'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+                title="マサリー表示"
+              >
+                <LayoutDashboard size={16} />
               </button>
             </div>
           )}

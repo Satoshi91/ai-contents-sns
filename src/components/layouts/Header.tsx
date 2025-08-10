@@ -7,7 +7,6 @@ import { useScrollDirection } from '@/lib/hooks/useScrollDirection';
 import { signOut } from '@/lib/firebase/auth';
 import { Button } from '@/components/ui/Button';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
-import { AuthModal } from '@/components/ui/AuthModal';
 import { AgeRatingDropdown } from '@/components/ui/AgeRatingDropdown';
 import { useRouter } from 'next/navigation';
 import { getImageURL } from '@/lib/cloudflare/images';
@@ -16,15 +15,15 @@ import { UserCircle, PenSquare, Menu, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
+  onLoginClick?: () => void;
 }
 
-export function Header({ onMenuToggle }: HeaderProps) {
+export function Header({ onMenuToggle, onLoginClick }: HeaderProps) {
   const { user, userData, isAnonymous } = useAuth();
   const { ageFilter, setAgeFilter } = useAgeRating();
   const isVisible = useScrollDirection({ threshold: 5 });
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -117,7 +116,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
               />
             ) : (
               <Button
-                onClick={() => setIsAuthModalOpen(true)}
+                onClick={onLoginClick}
                 variant="secondary"
                 size="sm"
                 className="cursor-pointer"
@@ -128,10 +127,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
           </div>
         </div>
       </div>
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
     </header>
   );
 }

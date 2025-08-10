@@ -110,6 +110,7 @@ export function ProfileEditModal({ isOpen, onClose, user, onUpdate }: ProfileEdi
             {...register('displayName')}
             error={errors.displayName?.message}
             placeholder="表示名を入力"
+            fullWidth
           />
         </div>
 
@@ -124,6 +125,7 @@ export function ProfileEditModal({ isOpen, onClose, user, onUpdate }: ProfileEdi
             placeholder="自己紹介を入力（160文字まで）"
             rows={4}
             maxLength={160}
+            fullWidth
           />
           <p className="mt-1 text-sm text-gray-500">
             {(register('bio').value?.length || 0)} / 160

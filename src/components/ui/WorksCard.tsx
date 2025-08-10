@@ -2,7 +2,7 @@
 
 import { Work } from '@/types/work';
 import { WorksCategory } from '@/types/worksSection';
-import { Heart, User, Play, Pause, Edit } from 'lucide-react';
+import { Heart, User, Play, Pause, Edit, Lock } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useAudioPlayer } from '@/components/features/GlobalAudioPlayer/hooks/useAudioPlayer';
@@ -13,7 +13,7 @@ interface WorksCardProps {
   work: Work;
   
   // レイアウト
-  layout?: 'grid' | 'list';
+  layout?: 'grid' | 'list' | 'masonry';
   
   // プレイリスト情報（新機能）
   works?: Work[];              // 同じセクション内の全作品リスト
@@ -60,6 +60,16 @@ export function WorksCard({
   } = useAudioPlayer();
   const [imageError, setImageError] = useState(false);
   const [userImageError, setUserImageError] = useState(false);
+
+  // URLが有効かどうかをチェックする関数
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return url.startsWith('http://') || url.startsWith('https://');
+    } catch {
+      return false;
+    }
+  };
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLikeLoading) {
@@ -145,6 +155,25 @@ export function WorksCard({
     }
   };
 
+  // マサリーモードの高さを決定する関数
+  const getMasonryImageHeight = () => {
+    const baseHeight = 200;
+    
+    // コンテンツタイプに応じた高さ調整
+    switch (contentTypeInfo.primaryContent) {
+      case 'audio': // voice
+        return baseHeight * 0.8; // 160px - コンパクト
+      case 'script': 
+        return baseHeight * 0.7; // 140px - 最もコンパクト
+      case 'image':
+        return baseHeight * 1.2; // 240px - 画像を強調
+      case 'mixed':
+        return baseHeight; // 200px - デフォルト
+      default:
+        return baseHeight;
+    }
+  };
+
   if (layout === 'list') {
     // リスト表示レイアウト
     return (
@@ -223,18 +252,29 @@ export function WorksCard({
           <div className="flex-1 p-4 min-w-0">
             <div className="flex flex-col h-full">
               {/* タイトル */}
-              <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
+              <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 flex items-center gap-2">
+                {work.publishStatus === 'private' && (
+                  <Lock size={16} className="text-gray-500 flex-shrink-0" />
+                )}
                 {work.title}
               </h3>
 
               {/* バッジとタグ */}
-              {(work.contentRating === '18+' || contentTypeInfo.label !== '作品' || (work.tags && work.tags.length > 0)) && (
+              {(work.contentRating === '18+' || contentTypeInfo.label !== '作品' || work.publishStatus === 'private' || (work.tags && work.tags.length > 0)) && (
                 <div className="mb-3">
                   <div className="flex flex-wrap gap-1.5">
                     {/* コンテンツタイプバッジ */}
                     {contentTypeInfo.label !== '作品' && (
                       <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full cursor-default">
                         {contentTypeInfo.icon} {contentTypeInfo.label}
+                      </span>
+                    )}
+                    
+                    {/* 非公開バッジ */}
+                    {work.publishStatus === 'private' && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-200 rounded-full cursor-default">
+                        <Lock size={12} className="mr-1" />
+                        非公開
                       </span>
                     )}
                     
@@ -349,12 +389,15 @@ export function WorksCard({
     );
   }
 
-  // グリッド表示レイアウト（デフォルト）
+  // グリッド・マサリー表示レイアウト（デフォルト）
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       {/* サムネイル画像 */}
       <div 
-        className="aspect-square bg-gray-200 relative cursor-pointer hover:shadow-lg group transition-all duration-200"
+        className={`bg-gray-200 relative cursor-pointer hover:shadow-lg group transition-all duration-200 ${
+          layout === 'masonry' ? '' : 'aspect-square'
+        }`}
+        style={layout === 'masonry' ? { height: `${getMasonryImageHeight()}px` } : {}}
         onClick={handleWorkClick}
       >
         {work.imageUrl && work.imageId && !imageError ? (
@@ -505,7 +548,7 @@ export function WorksCard({
             >
               {/* ユーザーアイコン */}
               <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
-                {work.userPhotoURL && !userImageError ? (
+                {work.userPhotoURL && !userImageError && isValidUrl(work.userPhotoURL) ? (
                   <Image
                     src={work.userPhotoURL}
                     alt={work.displayName}

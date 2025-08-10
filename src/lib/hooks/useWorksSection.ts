@@ -12,6 +12,7 @@ interface UseWorksSectionOptions {
   config?: Partial<WorksSectionConfig>;
   enabled?: boolean; // 自動フェッチの有効/無効
   skipR18Filter?: boolean; // R-18フィルタを無効にする（自分の作品表示時など）
+  currentUserId?: string; // 現在のユーザーID（自分の作品表示時など）
 }
 
 interface UseWorksSectionReturn {
@@ -27,7 +28,8 @@ export function useWorksSection({
   category, 
   config = {}, 
   enabled = true,
-  skipR18Filter = false
+  skipR18Filter = false,
+  currentUserId
 }: UseWorksSectionOptions): UseWorksSectionReturn {
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,10 +71,6 @@ export function useWorksSection({
           worksData = await getAllWorks(config.limit || 8);
           break;
           
-        case 'all':
-          worksData = await getAllWorks(config.limit || 20);
-          break;
-          
         case 'following':
           // フォロー機能が未実装のため、暫定的に全作品を返す
           console.warn('フォロー機能未実装のため、全作品を返却します');
@@ -89,7 +87,10 @@ export function useWorksSection({
           
         case 'user':
           if (config.userId) {
-            worksData = await getUserWorks(config.userId, config.limit || 10);
+            console.log('=== useWorksSection user category ===');
+            console.log('config.userId:', config.userId);
+            console.log('currentUserId:', currentUserId);
+            worksData = await getUserWorks(config.userId, config.limit || 10, undefined, currentUserId);
           } else {
             throw new Error('userId is required for user category');
           }
@@ -127,7 +128,7 @@ export function useWorksSection({
     } finally {
       setLoading(false);
     }
-  }, [category, config.limit, config.userId, ageFilter, skipR18Filter]);
+  }, [category, config.limit, config.userId, ageFilter, skipR18Filter, currentUserId]);
 
   useEffect(() => {
     if (category === 'liked') {

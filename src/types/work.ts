@@ -1,6 +1,9 @@
 import { WorkTag } from './tag';
 import { ContentType } from './content';
 
+// 公開設定の型定義
+export type PublishStatus = 'public' | 'private' | 'limited';
+
 export interface Work {
   id: string;
   uid?: string;
@@ -30,6 +33,7 @@ export interface Work {
   tagNames: string[];
   isR18Work: boolean;
   contentRating: 'all' | '12+' | '15+' | '18+';
+  publishStatus: PublishStatus; // 公開設定
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -46,6 +50,7 @@ export interface CreateWorkInput {
   tags?: string[];
   ageRating?: 'all' | '18+';
   contentType?: 'voice' | 'script' | 'image' | 'mixed'; // コンテンツタイプを指定可能
+  publishStatus?: PublishStatus; // 公開設定（デフォルト: 'public'）
 }
 
 export interface WorkInteraction {

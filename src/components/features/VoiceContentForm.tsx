@@ -5,6 +5,7 @@ import { TextArea } from '@/components/ui/TextArea';
 import { TagInput } from '@/components/ui/TagInput';
 import { AudioFileUpload } from '@/components/features/AudioFileUpload';
 import { AgeRatingToggle } from '@/components/ui/AgeRatingToggle';
+import { PublishStatus } from '@/types/work';
 
 interface VoiceContentFormProps {
   title: string;
@@ -14,12 +15,14 @@ interface VoiceContentFormProps {
   audioId: string;
   audioOriginalFilename: string;
   ageRating: 'all' | '18+';
+  publishStatus: PublishStatus;
   onTitleChange: (title: string) => void;
   onDescriptionChange: (description: string) => void;
   onTagsChange: (tags: string[]) => void;
   onAudioUpload: (url: string, id: string, filename?: string) => void;
   onAudioDelete: () => void;
   onAgeRatingChange: (rating: 'all' | '18+') => void;
+  onPublishStatusChange: (status: PublishStatus) => void;
   disabled?: boolean;
   workId?: string;
 }
@@ -32,12 +35,14 @@ export function VoiceContentForm({
   audioId,
   audioOriginalFilename,
   ageRating,
+  publishStatus,
   onTitleChange,
   onDescriptionChange,
   onTagsChange,
   onAudioUpload,
   onAudioDelete,
   onAgeRatingChange,
+  onPublishStatusChange,
   disabled = false,
   workId
 }: VoiceContentFormProps) {
@@ -134,6 +139,42 @@ export function VoiceContentForm({
           />
           <p className="text-xs text-gray-500 mt-1">
             コンテンツの年齢制限を設定してください
+          </p>
+        </div>
+
+        {/* 公開設定 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            公開設定
+          </label>
+          <div className="flex gap-6">
+            <label className="flex items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded">
+              <input
+                type="radio"
+                name="publishStatus"
+                value="public"
+                checked={publishStatus === 'public'}
+                onChange={(e) => onPublishStatusChange(e.target.value as PublishStatus)}
+                disabled={disabled}
+                className="mr-2 text-blue-600"
+              />
+              <span className="text-sm text-gray-700">公開</span>
+            </label>
+            <label className="flex items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded">
+              <input
+                type="radio"
+                name="publishStatus"
+                value="private"
+                checked={publishStatus === 'private'}
+                onChange={(e) => onPublishStatusChange(e.target.value as PublishStatus)}
+                disabled={disabled}
+                className="mr-2 text-blue-600"
+              />
+              <span className="text-sm text-gray-700">非公開</span>
+            </label>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            公開: みんなに表示されます / 非公開: 自分だけが確認できます
           </p>
         </div>
       </div>

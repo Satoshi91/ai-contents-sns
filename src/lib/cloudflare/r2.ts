@@ -8,21 +8,74 @@ interface R2Config {
   bucketName: string;
 }
 
-const r2Config: R2Config = {
-  accountId: process.env.CLOUDFLARE_R2_ACCOUNT_ID!,
-  accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
-  secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
-  bucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
-};
+// グローバル変数（遅延初期化）
+let r2Config: R2Config | null = null;
+let r2Client: S3Client | null = null;
+let configChecked = false;
 
-const r2Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${r2Config.accountId}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: r2Config.accessKeyId,
-    secretAccessKey: r2Config.secretAccessKey,
-  },
-});
+// 環境変数の検証（実際の使用時に呼び出される）
+function validateR2Config(): R2Config | null {
+  const requiredEnvVars = {
+    accountId: process.env.CLOUDFLARE_R2_ACCOUNT_ID,
+    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    bucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+  };
+
+  const missingVars = Object.entries(requiredEnvVars)
+    .filter(([key, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingVars.length > 0) {
+    console.warn('R2 environment variables not configured:', missingVars);
+    console.warn('R2 file upload features will be disabled. This is normal for development environments.');
+    console.warn('To enable R2 features, set the following environment variables:');
+    missingVars.forEach(varName => {
+      const envVarName = `CLOUDFLARE_R2_${varName.replace(/([A-Z])/g, '_$1').toUpperCase()}`;
+      console.warn(`  - ${envVarName}`);
+    });
+    return null;
+  }
+
+  console.log('R2 configuration validated successfully');
+  return {
+    accountId: requiredEnvVars.accountId!,
+    accessKeyId: requiredEnvVars.accessKeyId!,
+    secretAccessKey: requiredEnvVars.secretAccessKey!,
+    bucketName: requiredEnvVars.bucketName!,
+  };
+}
+
+// 遅延初期化関数
+function initializeR2(): boolean {
+  if (configChecked) {
+    return r2Config !== null && r2Client !== null;
+  }
+
+  configChecked = true;
+  r2Config = validateR2Config();
+
+  if (r2Config) {
+    try {
+      r2Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${r2Config.accountId}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId: r2Config.accessKeyId,
+          secretAccessKey: r2Config.secretAccessKey,
+        },
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize R2 client:', error);
+      r2Config = null;
+      r2Client = null;
+      return false;
+    }
+  }
+
+  return false;
+}
 
 export interface AudioUploadResult {
   success: boolean;
@@ -52,6 +105,10 @@ export async function getAudioUploadURL(
   try {
     if (!userId || !workId || !fileName) {
       return { success: false, error: '必須パラメータが不足しています' };
+    }
+
+    if (!initializeR2()) {
+      return { success: false, error: 'R2設定が無効です。環境変数を確認してください。' };
     }
 
     // ファイル拡張子の検証
@@ -96,10 +153,78 @@ export async function getAudioUploadURL(
 }
 
 /**
+ * 音声Blobを直接R2にアップロード
+ */
+export async function uploadAudioToR2(
+  audioBlob: Blob,
+  fileName: string
+): Promise<{ success: boolean; url?: string; fileId?: string; error?: string }> {
+  try {
+    if (!audioBlob || !fileName) {
+      return { success: false, error: '必須パラメータが不足しています' };
+    }
+
+    if (!initializeR2()) {
+      return { success: false, error: 'R2設定が無効です。環境変数を確認してください。' };
+    }
+
+    // ファイル拡張子の検証
+    const validExtensions = ['.mp3', '.wav', '.m4a', '.aac', '.ogg'];
+    const fileExtension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+    
+    if (!validExtensions.includes(fileExtension)) {
+      return { 
+        success: false, 
+        error: `サポートされていないファイル形式です。対応形式: ${validExtensions.join(', ')}` 
+      };
+    }
+
+    // ファイルIDを生成（タイムスタンプベース）
+    const timestamp = Date.now();
+    const fileId = `realtime_audio_${timestamp}${fileExtension}`;
+    const audioId = `audio/realtime/${fileId}`;
+
+    // BlobをArrayBufferに変換
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    const command = new PutObjectCommand({
+      Bucket: r2Config.bucketName,
+      Key: audioId,
+      Body: uint8Array,
+      ContentType: audioBlob.type || 'audio/mpeg',
+      Metadata: {
+        originalName: fileName,
+        uploadType: 'realtime',
+        timestamp: timestamp.toString(),
+      },
+    });
+
+    await r2Client.send(command);
+
+    return {
+      success: true,
+      url: getAudioPublicURL(audioId),
+      fileId: audioId,
+    };
+  } catch (error) {
+    console.error('R2 audio upload error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '音声ファイルのアップロードに失敗しました',
+    };
+  }
+}
+
+/**
  * 音声ファイルを削除
  */
 export async function deleteAudioFile(audioId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!initializeR2()) {
+      return { success: false, error: 'R2設定が無効です。環境変数を確認してください。' };
+    }
+
     const command = new DeleteObjectCommand({
       Bucket: r2Config.bucketName,
       Key: audioId,
@@ -120,6 +245,11 @@ export async function deleteAudioFile(audioId: string): Promise<{ success: boole
  * 音声ファイルの公開URLを生成
  */
 export function getAudioPublicURL(audioId: string): string {
+  if (!initializeR2()) {
+    console.error('R2 configuration is invalid');
+    return '';
+  }
+  
   const publicDomain = process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN;
   
   if (publicDomain) {
@@ -138,6 +268,10 @@ export async function getAudioDownloadURL(
   expiresIn: number = 3600
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
+    if (!initializeR2()) {
+      return { success: false, error: 'R2設定が無効です。環境変数を確認してください。' };
+    }
+
     const command = new GetObjectCommand({
       Bucket: r2Config.bucketName,
       Key: audioId,
@@ -159,6 +293,10 @@ export async function getAudioDownloadURL(
  */
 export async function getAudioFileInfo(audioId: string) {
   try {
+    if (!initializeR2()) {
+      return { success: false, error: 'R2設定が無効です。環境変数を確認してください。' };
+    }
+
     const command = new GetObjectCommand({
       Bucket: r2Config.bucketName,
       Key: audioId,
@@ -215,6 +353,10 @@ export async function getImageUploadURL(
       return { success: false, error: '必須パラメータが不足しています' };
     }
 
+    if (!initializeR2()) {
+      return { success: false, error: 'R2設定が無効です。環境変数を確認してください。' };
+    }
+
     // ファイル拡張子の検証
     const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const fileExtension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
@@ -261,6 +403,10 @@ export async function getImageUploadURL(
  */
 export async function deleteImageFile(imageId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!initializeR2()) {
+      return { success: false, error: 'R2設定が無効です。環境変数を確認してください。' };
+    }
+
     const command = new DeleteObjectCommand({
       Bucket: r2Config.bucketName,
       Key: imageId,
@@ -281,6 +427,11 @@ export async function deleteImageFile(imageId: string): Promise<{ success: boole
  * 画像ファイルの公開URLを生成
  */
 export function getImagePublicURL(imageId: string): string {
+  if (!initializeR2()) {
+    console.error('R2 configuration is invalid');
+    return '';
+  }
+  
   const publicDomain = process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN;
   
   if (publicDomain) {
@@ -296,6 +447,10 @@ export function getImagePublicURL(imageId: string): string {
  */
 export async function getImageFileInfo(imageId: string) {
   try {
+    if (!initializeR2()) {
+      return { success: false, error: 'R2設定が無効です。環境変数を確認してください。' };
+    }
+
     const command = new GetObjectCommand({
       Bucket: r2Config.bucketName,
       Key: imageId,

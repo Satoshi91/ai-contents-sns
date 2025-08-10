@@ -3,6 +3,7 @@ import { adminAuth } from '@/lib/firebase/admin';
 import { createWork } from '@/lib/firebase/works';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/app';
+import { PublishStatus } from '@/types/work';
 
 interface SaveWorkRequest {
   title: string;
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<SaveWorkRespo
       audioUrl, 
       audioId, 
       isPublic,
-      contentType = 'voice'
+      contentType = 'mixed'
     } = body;
 
     // バリデーション
@@ -87,22 +88,21 @@ export async function POST(req: NextRequest): Promise<NextResponse<SaveWorkRespo
       );
     }
 
+    // 公開設定の判定
+    const publishStatus: PublishStatus = isPublic ? 'public' : 'private';
+
     // 作品データを作成
     const workInput = {
       title: title.trim(),
       caption: caption?.trim() || (isPublic ? 'AIチャットから生成された音声作品' : ''),
-      script: script?.trim() || '',
+      script: script?.trim() || '', // AIチャットのメッセージ内容がスクリプトとして保存される
       audioUrl,
       audioId,
       audioOriginalFilename: `aivis_generated_${Date.now()}.mp3`,
       contentType,
       ageRating: 'all' as const,
+      publishStatus,
     };
-
-    // 非公開作品の場合は、キャプションを空にして非公開であることを示す
-    if (!isPublic) {
-      workInput.caption = '';
-    }
 
     // 既存のcreateWork関数を使用して作品を作成
     const result = await createWork(

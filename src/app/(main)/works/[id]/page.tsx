@@ -37,7 +37,7 @@ export default function WorkDetailPage() {
         setLoading(true);
         setError(null);
         
-        const workData = await getWork(workId);
+        const workData = await getWork(workId, user?.uid);
         
         if (!workData) {
           setError('作品が見つかりませんでした');
@@ -55,7 +55,7 @@ export default function WorkDetailPage() {
     };
 
     fetchWork();
-  }, [workId]);
+  }, [workId, user?.uid]);
   
   // 音声再生の管理
   useEffect(() => {

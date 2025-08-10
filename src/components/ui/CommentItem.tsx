@@ -17,6 +17,16 @@ export default function CommentItem({ comment, onDelete }: CommentItemProps) {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // URLが有効かどうかをチェックする関数
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return url.startsWith('http://') || url.startsWith('https://');
+    } catch {
+      return false;
+    }
+  };
+
   const handleDelete = async () => {
     if (!user || comment.uid !== user.uid) return;
     
@@ -53,7 +63,7 @@ export default function CommentItem({ comment, onDelete }: CommentItemProps) {
               height={40}
               className="w-full h-full object-cover"
             />
-          ) : comment.userPhotoURL ? (
+          ) : comment.userPhotoURL && isValidUrl(comment.userPhotoURL) ? (
             <Image
               src={comment.userPhotoURL}
               alt={comment.displayName}

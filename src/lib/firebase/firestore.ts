@@ -17,11 +17,15 @@ import { Work } from '@/types/work';
 import { User } from '@/types/user';
 
 
-export async function getUserWorks(uid: string, limitCount: number = 20, lastDoc?: DocumentSnapshot) {
+export async function getUserWorks(uid: string, limitCount: number = 20, lastDoc?: DocumentSnapshot, currentUserId?: string) {
   try {
+    // 自分の作品を見る場合は全て表示、他人の作品は公開のみ
+    const isOwnProfile = currentUserId && currentUserId === uid;
+    
     let q = query(
       collection(db, 'works'),
       where('uid', '==', uid),
+      ...(isOwnProfile ? [] : [where('publishStatus', 'in', ['public', null])]), // 他人の場合は公開のみ
       orderBy('createdAt', 'desc'),
       limit(limitCount)
     );
@@ -30,6 +34,7 @@ export async function getUserWorks(uid: string, limitCount: number = 20, lastDoc
       q = query(
         collection(db, 'works'),
         where('uid', '==', uid),
+        ...(isOwnProfile ? [] : [where('publishStatus', 'in', ['public', null])]), // 他人の場合は公開のみ
         orderBy('createdAt', 'desc'),
         startAfter(lastDoc),
         limit(limitCount)
@@ -40,6 +45,7 @@ export async function getUserWorks(uid: string, limitCount: number = 20, lastDoc
     const works = snapshot.docs.map(doc => ({
       ...doc.data(),
       id: doc.id,
+      publishStatus: doc.data().publishStatus || 'public', // 既存データはpublicとして扱う
       createdAt: doc.data().createdAt?.toDate() || new Date(),
       updatedAt: doc.data().updatedAt?.toDate() || new Date(),
     })) as Work[];

@@ -104,11 +104,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
         body: JSON.stringify({
           title: `AI音声: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
           caption: isPublic ? `AIチャットから生成された音声作品` : '',
-          script: message.content,
+          script: message.content, // AIチャットのメッセージ内容をスクリプトとして保存
           audioUrl: voiceState.audioUrl,
           audioId: voiceState.audioId,
           isPublic,
-          contentType: 'voice',
+          contentType: 'mixed', // 音声とスクリプト両方を含む作品として保存
         }),
       });
 

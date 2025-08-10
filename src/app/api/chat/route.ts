@@ -8,7 +8,7 @@ const openai = new OpenAI({
 });
 
 const SYSTEM_PROMPT = `
-あなたはVOICARISMEのAIアシスタントです。
+あなたはVOICARISMEのAIチャットです。
 AIボイスドラマとASMR作品の創作を支援する専門家として、
 以下の分野でユーザーをサポートしてください：
 

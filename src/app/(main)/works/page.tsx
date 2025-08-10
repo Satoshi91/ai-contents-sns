@@ -105,7 +105,8 @@ export default function MyWorksPage() {
         onWorkClick={handleWorkClick}
         likeStates={getLikeStates()}
         isWorkLiked={isWorkLiked}
-        showHeader={false}
+        showHeader={true}
+        showViewToggle={true}
         skipR18Filter={true}
       />
     </div>

@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { getUserByUsername, getUserWorks } from '@/lib/firebase/firestore';
+import { getUserByUsername } from '@/lib/firebase/firestore';
+import { getUserWorks } from '@/lib/firebase/works';
 import { User } from '@/types/user';
 import { Work } from '@/types/work';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ProfileDisplay } from '@/components/features/ProfileDisplay';
 import { ProfileEditModal } from '@/components/features/ProfileEditModal';
 import { Spinner } from '@/components/ui/Spinner';
-import { Button } from '@/components/ui/Button';
 import { ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -23,22 +23,13 @@ export default function ProfilePage() {
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
-  const [worksLoading, setWorksLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [lastDoc, setLastDoc] = useState<any>(null);
 
   const isOwnProfile = userData?.username === username;
 
   useEffect(() => {
     loadProfile();
   }, [username]);
-
-  useEffect(() => {
-    if (profileUser) {
-      loadWorks();
-    }
-  }, [profileUser]);
 
   const loadProfile = async () => {
     setLoading(true);
@@ -50,39 +41,29 @@ export default function ProfilePage() {
         return;
       }
       setProfileUser(user);
+
+      // 作品データを取得
+      console.log('=== 作品データ取得開始 ===');
+      console.log('対象ユーザーID:', user.uid);
+      console.log('現在のユーザーID:', userData?.uid);
+      console.log('自分のプロフィールか:', isOwnProfile);
+      
+      const userWorks = await getUserWorks(user.uid, 20, undefined, userData?.uid);
+      console.log('取得された作品数:', userWorks.length);
+      console.log('作品データ:', userWorks.map(work => ({
+        id: work.id,
+        title: work.title,
+        publishStatus: work.publishStatus,
+        createdAt: work.createdAt
+      })));
+      
+      setWorks(userWorks);
+      console.log('=== 作品データ取得完了 ===');
     } catch (error) {
       console.error('Error loading profile:', error);
       toast.error('プロフィールの読み込みに失敗しました');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadWorks = async (loadMore = false) => {
-    if (!profileUser || worksLoading) return;
-    
-    setWorksLoading(true);
-    try {
-      const result = await getUserWorks(
-        profileUser.uid,
-        10,
-        loadMore ? lastDoc : undefined
-      );
-      
-      if (result.success) {
-        if (loadMore) {
-          setWorks(prev => [...prev, ...result.works]);
-        } else {
-          setWorks(result.works);
-        }
-        setLastDoc(result.lastDoc);
-        setHasMore(result.hasMore);
-      }
-    } catch (error) {
-      console.error('Error loading works:', error);
-      toast.error('作品の読み込みに失敗しました');
-    } finally {
-      setWorksLoading(false);
     }
   };
 
@@ -123,9 +104,6 @@ export default function ProfilePage() {
                 <h1 className="text-xl font-bold text-gray-900">
                   {profileUser.displayName}
                 </h1>
-                <p className="text-sm text-gray-500">
-                  {works.length} 作品
-                </p>
               </div>
             </div>
           </div>
@@ -139,24 +117,6 @@ export default function ProfilePage() {
               isOwnProfile={isOwnProfile}
               onEditClick={() => setIsEditModalOpen(true)}
             />
-            
-            {works.length > 0 && hasMore && !worksLoading && (
-              <div className="p-4 border-t">
-                <Button
-                  onClick={() => loadWorks(true)}
-                  variant="secondary"
-                  className="w-full"
-                >
-                  もっと見る
-                </Button>
-              </div>
-            )}
-            
-            {worksLoading && (
-              <div className="p-8 flex justify-center">
-                <Spinner />
-              </div>
-            )}
           </div>
         </main>
 

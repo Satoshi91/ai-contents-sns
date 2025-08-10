@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FollowButton } from '@/components/ui/FollowButton';
+import { WorksCard } from '@/components/ui/WorksCard';
 import { Calendar, Edit2, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -25,6 +26,17 @@ export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: Profi
   const router = useRouter();
   const { followerCount, followingCount, loading: statsLoading } = useFollowStats(user.uid);
   
+  // デバッグ用: 作品データの表示状況を確認
+  console.log('=== ProfileDisplay レンダリング ===');
+  console.log('ユーザー:', user.displayName);
+  console.log('作品数:', works.length);
+  console.log('自分のプロフィールか:', isOwnProfile);
+  console.log('作品データ:', works.map(work => ({
+    id: work.id,
+    title: work.title,
+    publishStatus: work.publishStatus
+  })));
+  
   const profileImageUrl = user.photoURL?.includes('profile-') 
     ? getImageURL(user.photoURL, 'profile')
     : user.photoURL;
@@ -35,6 +47,10 @@ export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: Profi
 
   const handleFollowingClick = () => {
     router.push(`/profile/${user.username}/following`);
+  };
+
+  const handleWorkClick = (workId: string) => {
+    router.push(`/works/${workId}`);
   };
 
   return (
@@ -54,6 +70,7 @@ export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: Profi
                 onClick={onEditClick}
                 variant="secondary"
                 size="sm"
+                className="flex items-center"
               >
                 <Edit2 size={16} className="mr-1" />
                 プロフィール編集
@@ -83,11 +100,6 @@ export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: Profi
         </div>
 
         <div className="flex space-x-6 border-t pt-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">{works.length}</div>
-            <div className="text-sm text-gray-500">作品</div>
-          </div>
-          
           <button 
             onClick={handleFollowersClick}
             className="text-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded transition-colors"
@@ -110,48 +122,31 @@ export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: Profi
         </div>
       </div>
 
-      {works.length > 0 && (
-        <div className="border-t">
-          <div className="px-6 py-3">
-            <h3 className="text-lg font-semibold text-gray-900">作品</h3>
-          </div>
-          <div className="divide-y">
-            {works.map((work) => (
-              <div key={work.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                <div className="flex space-x-3">
-                  <Avatar
-                    src={work.userPhotoURL}
-                    alt={work.displayName}
-                    size="sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-1 mb-1">
-                      <span className="font-semibold text-gray-900 truncate">
-                        {work.displayName}
-                      </span>
-                      <span className="text-gray-500">@{work.username}</span>
-                      <span className="text-gray-400">·</span>
-                      <span className="text-gray-500 text-sm">
-                        {format(work.createdAt, 'M月d日', { locale: ja })}
-                      </span>
-                    </div>
-                    <h4 className="font-semibold text-gray-900 mb-1">{work.title}</h4>
-                    <p className="text-gray-700 whitespace-pre-wrap break-words">
-                      {work.caption}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* 作品リスト */}
+      <div className="border-t">
+        <div className="px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            作品 ({works.length})
+          </h3>
+          
+          {works.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>まだ作品がありません</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {works.map((work) => (
+                <WorksCard
+                  key={work.id}
+                  work={work}
+                  onWorkClick={() => handleWorkClick(work.id)}
+                  currentUserId={currentUser?.uid}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      )}
-
-      {works.length === 0 && (
-        <div className="border-t px-6 py-12 text-center">
-          <p className="text-gray-500">まだ作品がありません</p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
