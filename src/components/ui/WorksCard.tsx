@@ -263,18 +263,18 @@ export function WorksCard({
               {(work.contentRating === '18+' || contentTypeInfo.label !== '作品' || work.publishStatus === 'private' || (work.tags && work.tags.length > 0)) && (
                 <div className="mb-3">
                   <div className="flex flex-wrap gap-1.5">
-                    {/* コンテンツタイプバッジ */}
-                    {contentTypeInfo.label !== '作品' && (
-                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full cursor-default">
-                        {contentTypeInfo.icon} {contentTypeInfo.label}
-                      </span>
-                    )}
-                    
                     {/* 非公開バッジ */}
                     {work.publishStatus === 'private' && (
                       <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-200 rounded-full cursor-default">
                         <Lock size={12} className="mr-1" />
                         非公開
+                      </span>
+                    )}
+                    
+                    {/* コンテンツタイプバッジ */}
+                    {contentTypeInfo.label !== '作品' && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full cursor-default">
+                        {contentTypeInfo.icon} {contentTypeInfo.label}
                       </span>
                     )}
                     
@@ -338,7 +338,7 @@ export function WorksCard({
                   >
                     {/* ユーザーアイコン */}
                     <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
-                      {work.userPhotoURL && !userImageError ? (
+                      {work.userPhotoURL && !userImageError && isValidUrl(work.userPhotoURL) ? (
                         <Image
                           src={work.userPhotoURL}
                           alt={work.displayName}
@@ -433,12 +433,23 @@ export function WorksCard({
           </div>
         )}
         
-        {/* 左上のコンテンツタイプバッジ */}
-        {contentTypeInfo.label !== '作品' && (
-          <div className="absolute top-2 left-2">
-            <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-black bg-opacity-60 rounded-full">
-              {contentTypeInfo.icon} {contentTypeInfo.label}
-            </span>
+        {/* 左上のバッジ（非公開 + コンテンツタイプ） */}
+        {(work.publishStatus === 'private' || contentTypeInfo.label !== '作品') && (
+          <div className="absolute top-2 left-2 flex gap-1">
+            {/* 非公開バッジ */}
+            {work.publishStatus === 'private' && (
+              <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-black bg-opacity-70 rounded-full">
+                <Lock size={10} className="mr-1" />
+                非公開
+              </span>
+            )}
+            
+            {/* コンテンツタイプバッジ */}
+            {contentTypeInfo.label !== '作品' && (
+              <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-black bg-opacity-60 rounded-full">
+                {contentTypeInfo.icon} {contentTypeInfo.label}
+              </span>
+            )}
           </div>
         )}
         

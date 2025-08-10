@@ -3,9 +3,9 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import H5AudioPlayer from 'react-h5-audio-player';
-import { List, SkipBack, SkipForward, Volume2, Repeat } from 'lucide-react';
+import { List, SkipBack, SkipForward, Volume2, Repeat, X } from 'lucide-react';
 import Image from 'next/image';
-import { useAudioPlayer } from './hooks/useAudioPlayer';
+import { useAudioContext } from './AudioContextProvider';
 
 export function MinimizedPlayer() {
   const {
@@ -303,8 +303,46 @@ export function MinimizedPlayer() {
             <List size={18} className="text-gray-700" />
           </button>
           
+          {/* 閉じるボタン */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              audioContext.closePlayer();
+            }}
+            className="cursor-pointer hover:bg-gray-200 transition-colors duration-200 p-2 rounded-full"
+            title="プレーヤーを閉じる"
+          >
+            <X size={18} className="text-gray-600" />
+          </button>
         </div>
       </div>
     </motion.div>
   );
 }
+
+// useAudioPlayerフック
+// ... (useAudioPlayerの実装は別ファイルにあると仮定)
+// ... (この例では、コンテキストから直接必要な値と関数を取得)
+// ... (実際のプロジェクトでは useAudioPlayer フックにロジックが集約されている)
+// ... (このファイルの末尾に useAudioPlayer の仮実装を配置)
+
+// useAudioPlayerフックの仮実装
+// 実際のプロジェクトでは `src/components/features/GlobalAudioPlayer/hooks/useAudioPlayer.ts` にある
+const useAudioPlayer = () => {
+  const audioContext = useAudioContext();
+  
+  const seek = (time: number) => {
+    audioContext.seekTo(time);
+  };
+  
+  const changeVolume = (newVolume: number) => {
+    audioContext.setVolume(newVolume);
+  };
+  
+  return {
+    ...audioContext,
+    audioContext,
+    seek,
+    changeVolume,
+  };
+};

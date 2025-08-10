@@ -90,14 +90,18 @@ export const createChatSession = async (
 
     const title = input.title.trim() || (input.firstMessage ? generateSessionTitle(input.firstMessage) : '新しいチャット');
 
-    const sessionData = {
+    const sessionData: any = {
       userId,
       title,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       messageCount: 0,
-      lastMessage: input.firstMessage || undefined,
     };
+
+    // firstMessageがある場合のみlastMessageフィールドを追加
+    if (input.firstMessage && input.firstMessage.trim()) {
+      sessionData.lastMessage = input.firstMessage.trim();
+    }
 
     const sessionsRef = collection(db, CHAT_SESSIONS_COLLECTION);
     const docRef = await addDoc(sessionsRef, sessionData);

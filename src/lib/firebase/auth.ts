@@ -9,6 +9,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   User as FirebaseUser,
+  AuthError,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './app';
@@ -16,6 +17,32 @@ import { User } from '@/types/user';
 
 const googleProvider = new GoogleAuthProvider();
 const twitterProvider = new TwitterAuthProvider();
+
+// Firebase Auth エラーコードのマッピング
+export function getAuthErrorMessage(errorCode: string): string {
+  switch (errorCode) {
+    case 'auth/invalid-credential':
+    case 'auth/invalid-login-credentials':
+    case 'auth/wrong-password':
+      return 'メールアドレスまたはパスワードが間違っています';
+    case 'auth/user-not-found':
+      return 'アカウントが存在しません。新規登録をしてください。';
+    case 'auth/invalid-email':
+      return 'メールアドレスの形式が正しくありません';
+    case 'auth/user-disabled':
+      return 'このアカウントは無効になっています';
+    case 'auth/too-many-requests':
+      return 'ログイン試行回数が多すぎます。しばらく時間をおいてから再度お試しください';
+    case 'auth/network-request-failed':
+      return 'ネットワークエラーが発生しました。接続を確認してください';
+    case 'auth/email-already-in-use':
+      return 'このメールアドレスは既に使用されています';
+    case 'auth/weak-password':
+      return 'パスワードが弱すぎます';
+    default:
+      return 'ログインに失敗しました';
+  }
+}
 
 export async function signUp(email: string, password: string, username: string, displayName: string) {
   try {
@@ -86,7 +113,9 @@ export async function signIn(email: string, password: string) {
 
     return { success: true, user };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    const errorCode = error.code || '';
+    const errorMessage = getAuthErrorMessage(errorCode);
+    return { success: false, error: errorMessage, errorCode };
   }
 }
 

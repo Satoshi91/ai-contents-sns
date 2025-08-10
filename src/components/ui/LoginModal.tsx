@@ -21,6 +21,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const {
     register,
@@ -33,6 +34,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   const onSubmit = async (data: SignInFormData) => {
     setIsLoading(true);
+    setErrorMessage('');
     try {
       const result = await signIn(data.email, data.password);
       
@@ -42,10 +44,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         reset();
         router.push('/home');
       } else {
-        toast.error(result.error || 'ログインに失敗しました');
+        const error = result.error || 'ログインに失敗しました';
+        setErrorMessage(error);
+        toast.error(error);
       }
     } catch (error) {
-      toast.error('予期しないエラーが発生しました');
+      const errorMsg = '予期しないエラーが発生しました';
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -53,6 +59,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
+    setErrorMessage('');
     try {
       const result = await signInWithGoogle();
       
@@ -61,10 +68,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         onClose();
         router.push('/home');
       } else {
-        toast.error(result.error || 'ログインに失敗しました');
+        const error = result.error || 'ログインに失敗しました';
+        setErrorMessage(error);
+        toast.error(error);
       }
     } catch (error) {
-      toast.error('予期しないエラーが発生しました');
+      const errorMsg = '予期しないエラーが発生しました';
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsGoogleLoading(false);
     }
@@ -78,6 +89,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const handleClose = () => {
     onClose();
     reset();
+    setErrorMessage('');
   };
 
   if (!isOpen) return null;
@@ -112,6 +124,12 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             </div>
             
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+              {errorMessage && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                  <p className="text-sm text-red-600">{errorMessage}</p>
+                </div>
+              )}
+              
               <div className="space-y-4">
                 <Input
                   {...register('email')}

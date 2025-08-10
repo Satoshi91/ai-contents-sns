@@ -69,7 +69,7 @@ export function Header({ onMenuToggle, onLoginClick }: HeaderProps) {
               className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors duration-200 select-none"
               onClick={() => router.push('/home')}
             >
-              VOICARISME
+              VOICARISME(β)
             </h1>
           </div>
           <div className="flex items-center space-x-4">

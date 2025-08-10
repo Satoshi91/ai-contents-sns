@@ -29,6 +29,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isTwitterLoading, setIsTwitterLoading] = useState(false);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // フォーム管理 - サインイン
   const signinForm = useForm<SignInFormData>({
@@ -62,6 +63,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   // サインイン処理
   const onSigninSubmit = async (data: SignInFormData) => {
     setIsLoading(true);
+    setErrorMessage('');
     try {
       const result = await signIn(data.email, data.password);
       
@@ -71,10 +73,14 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
         signinForm.reset();
         router.push('/home');
       } else {
-        toast.error(result.error || 'ログインに失敗しました');
+        const error = result.error || 'ログインに失敗しました';
+        setErrorMessage(error);
+        toast.error(error);
       }
     } catch (error) {
-      toast.error('予期しないエラーが発生しました');
+      const errorMsg = '予期しないエラーが発生しました';
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -153,6 +159,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     signinForm.reset();
     signupForm.reset();
     setMode('signin');
+    setErrorMessage('');
   };
 
   // モード切り替え処理
@@ -160,6 +167,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     setMode(newMode);
     signinForm.reset();
     signupForm.reset();
+    setErrorMessage('');
   };
 
   if (!isOpen) return null;
@@ -216,6 +224,12 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             
             {mode === 'signin' ? (
               <form className="space-y-6" onSubmit={signinForm.handleSubmit(onSigninSubmit)}>
+                {errorMessage && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    <p className="text-sm text-red-600">{errorMessage}</p>
+                  </div>
+                )}
+                
                 <div className="space-y-4">
                   <Input
                     {...signinForm.register('email')}

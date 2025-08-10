@@ -68,6 +68,7 @@ interface AudioContextActions {
   // UI制御
   setIsMinimized: (minimized: boolean) => void;
   setShowPlaylist: (show: boolean) => void;
+  closePlayer: () => void;
   
   // プレイヤー同期
   setPlayerRef: (ref: React.RefObject<ReactH5AudioPlayer>) => void;
@@ -310,6 +311,20 @@ export function AudioContextProvider({ children }: AudioContextProviderProps) {
     setCurrentTime(time);
     setDuration(dur);
   };
+
+  const closePlayer = () => {
+    if (playerRef?.current) {
+      const audioElement = playerRef.current.audio.current;
+      if (audioElement && !audioElement.paused) {
+        audioElement.pause();
+      }
+    }
+    setCurrentTrack(null);
+    setPlaylistState([]);
+    setCurrentIndex(0);
+    setPlaylistMeta(null);
+    setIsPlaying(false);
+  };
   
   const contextValue: AudioContextType = {
     // State
@@ -353,6 +368,7 @@ export function AudioContextProvider({ children }: AudioContextProviderProps) {
     setPlayerRef,
     updatePlayingState,
     updateTime,
+    closePlayer,
   };
   
   return (

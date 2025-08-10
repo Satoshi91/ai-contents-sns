@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Message } from 'ai/react';
 import { Bot, User, Volume2, Loader, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +17,14 @@ interface VoiceState {
   audioUrl?: string;
   audioId?: string;
   error?: string;
+  progress?: {
+    currentChunk: number;
+    totalChunks: number;
+    completedChunks: number;
+    estimatedDuration?: number;
+    elapsedTime?: number;
+  };
+  audioChunks?: Uint8Array[];
 }
 
 interface SaveState {
@@ -31,51 +39,149 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
   const [showSaveOptions, setShowSaveOptions] = useState(false);
 
+  // クリーンアップ: コンポーネントがアンマウントされる際にオブジェクトURLを解放
+  useEffect(() => {
+    return () => {
+      if (voiceState.audioUrl && voiceState.audioUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(voiceState.audioUrl);
+      }
+    };
+  }, [voiceState.audioUrl]);
+
   const handleGenerateVoice = async () => {
     if (!user) {
       alert('ログインしてください');
       return;
     }
 
-    setVoiceState({ status: 'generating' });
+    setVoiceState({ 
+      status: 'generating',
+      progress: { currentChunk: 0, totalChunks: 0, completedChunks: 0 },
+      audioChunks: []
+    });
+    
+    const startTime = Date.now();
     
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('ログインが必要です');
-      }
-      
-      const token = await currentUser.getIdToken();
-
-      const response = await fetch('/api/aivis/generate', {
+      const response = await fetch('/api/tts/realtime-synthesize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           text: message.content,
-          outputFormat: 'mp3',
+          output_format: 'mp3',
+          use_ssml: true,
         }),
       });
 
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || '音声生成に失敗しました');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: 音声生成サービスでエラーが発生しました`);
       }
 
-      setVoiceState({
-        status: 'completed',
-        audioUrl: result.audioUrl,
-        audioId: result.audioId,
-      });
-      setShowSaveOptions(true);
+      if (!response.body) {
+        throw new Error('レスポンスストリームが利用できません');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      const audioChunks: Uint8Array[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              // 初期化データ
+              if (data.chunkId === 'init') {
+                setVoiceState(prev => ({
+                  ...prev,
+                  progress: {
+                    currentChunk: 0,
+                    totalChunks: data.totalChunks,
+                    completedChunks: 0,
+                    estimatedDuration: data.metadata?.estimatedDuration,
+                    elapsedTime: 0
+                  }
+                }));
+                continue;
+              }
+
+              // 完了通知
+              if (data.chunkId === 'complete') {
+                // 全ての音声チャンクを結合してBlobを作成
+                if (audioChunks.length > 0) {
+                  const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+                  const combined = new Uint8Array(totalLength);
+                  let offset = 0;
+                  
+                  for (const chunk of audioChunks) {
+                    combined.set(chunk, offset);
+                    offset += chunk.length;
+                  }
+
+                  const blob = new Blob([combined], { type: 'audio/mpeg' });
+                  const audioUrl = URL.createObjectURL(blob);
+                  
+                  setVoiceState({
+                    status: 'completed',
+                    audioUrl: audioUrl,
+                    audioId: `realtime_${Date.now()}`,
+                    audioChunks: audioChunks,
+                    progress: {
+                      currentChunk: data.totalChunks,
+                      totalChunks: data.totalChunks,
+                      completedChunks: data.totalChunks,
+                      elapsedTime: Date.now() - startTime
+                    }
+                  });
+                  setShowSaveOptions(true);
+                } else {
+                  throw new Error('音声データが生成されませんでした');
+                }
+                break;
+              }
+
+              // エラー処理
+              if (data.error) {
+                throw new Error(data.error);
+              }
+
+              // 音声チャンクデータ
+              if (data.audioData && Array.isArray(data.audioData)) {
+                const chunkData = new Uint8Array(data.audioData);
+                audioChunks.push(chunkData);
+
+                setVoiceState(prev => ({
+                  ...prev,
+                  progress: {
+                    ...prev.progress!,
+                    currentChunk: data.chunkIndex + 1,
+                    completedChunks: data.chunkIndex + 1,
+                    elapsedTime: Date.now() - startTime
+                  }
+                }));
+              }
+
+            } catch (parseError) {
+              console.error('データパースエラー:', parseError);
+            }
+          }
+        }
+      }
+
     } catch (error) {
-      console.error('Voice generation error:', error);
+      console.error('Realtime voice generation error:', error);
       setVoiceState({
         status: 'error',
-        error: error instanceof Error ? error.message : '音声生成中にエラーが発生しました',
+        error: error instanceof Error ? error.message : 'リアルタイム音声生成中にエラーが発生しました',
       });
     }
   };
@@ -181,24 +287,79 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
               {/* 生成中 */}
               {voiceState.status === 'generating' && (
-                <div className="flex items-center space-x-2 text-gray-600 text-sm">
-                  <Loader size={16} className="animate-spin" />
-                  <span>音声を生成しています...</span>
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="flex items-center space-x-2 text-blue-700 text-sm mb-2">
+                    <Loader size={16} className="animate-spin" />
+                    <span>音声を生成しています...</span>
+                  </div>
+                  
+                  {voiceState.progress && (
+                    <div className="space-y-2">
+                      {/* 進捗バー */}
+                      {voiceState.progress.totalChunks > 0 && (
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            style={{ 
+                              width: `${(voiceState.progress.completedChunks / voiceState.progress.totalChunks) * 100}%` 
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      {/* 進捗詳細 */}
+                      <div className="flex justify-between text-xs text-blue-600">
+                        <span>
+                          {voiceState.progress.totalChunks > 0 
+                            ? `${voiceState.progress.completedChunks}/${voiceState.progress.totalChunks} チャンク`
+                            : '初期化中...'
+                          }
+                        </span>
+                        
+                        <span>
+                          {voiceState.progress.elapsedTime 
+                            ? `${Math.round(voiceState.progress.elapsedTime / 1000)}秒経過`
+                            : ''
+                          }
+                        </span>
+                      </div>
+                      
+                      {/* 推定残り時間 */}
+                      {voiceState.progress.estimatedDuration && voiceState.progress.elapsedTime && voiceState.progress.completedChunks > 0 && (
+                        <div className="text-xs text-blue-500">
+                          推定残り時間: {Math.max(0, Math.round(
+                            (voiceState.progress.estimatedDuration * 1000 - voiceState.progress.elapsedTime) / 1000
+                          ))}秒
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* エラー */}
               {voiceState.status === 'error' && (
-                <div className="text-red-600 text-sm">
-                  {voiceState.error}
-                  <Button
-                    onClick={handleGenerateVoice}
-                    variant="secondary"
-                    size="sm"
-                    className="ml-2 cursor-pointer hover:bg-red-50 transition-colors duration-200"
-                  >
-                    再試行
-                  </Button>
+                <div className="bg-red-50 p-3 rounded-lg">
+                  <div className="text-red-700 text-sm font-medium mb-2">
+                    音声生成エラー
+                  </div>
+                  <div className="text-red-600 text-sm mb-3">
+                    {voiceState.error}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={handleGenerateVoice}
+                      variant="secondary"
+                      size="sm"
+                      className="cursor-pointer hover:bg-red-100 transition-colors duration-200"
+                    >
+                      <Loader size={14} className="mr-1" />
+                      再試行
+                    </Button>
+                    <div className="text-xs text-red-500">
+                      エラーが続く場合は時間をおいて再度お試しください
+                    </div>
+                  </div>
                 </div>
               )}
 

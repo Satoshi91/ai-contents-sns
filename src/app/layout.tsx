@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VOICARISME",
+  title: "VOICARISME(β)",
   description: "A Twitter clone built with Next.js and Firebase",
 };
 

@@ -13,28 +13,53 @@ import CommentList from '@/components/ui/CommentList';
 import Image from 'next/image';
 
 export default function WorkDetailPage() {
-  const params = useParams();
+  const { id: workId } = useParams();
+  const { user } = useAuth();
   const router = useRouter();
-  const workId = params.id as string;
   const [work, setWork] = useState<Work | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [author, setAuthor] = useState<{ displayName: string; username: string; photoURL: string; imageId?: string; } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // 音声再生関連の状態管理
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // シェア機能関連の状態管理
+  const shareMenuRef = useRef<HTMLDivElement>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
+
+  // トースト通知関連の状態管理
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const shareMenuRef = useRef<HTMLDivElement>(null);
-  
-  const { user, isAnonymous } = useAuth();
-  const { handleToggleLike, isWorkLiked, likeStates } = useLikes();
+
+  // いいね機能の初期化
+  const { 
+    likeStates, 
+    handleToggleLike, 
+    isWorkLiked 
+  } = useLikes();
+
+  // 認証状態
+  const isAnonymous = !user;
+
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return url.startsWith('http://') || url.startsWith('https://');
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     const fetchWork = async () => {
       if (!workId) return;
       
       try {
-        setLoading(true);
+        setIsLoading(true);
         setError(null);
         
         const workData = await getWork(workId, user?.uid);
@@ -50,7 +75,7 @@ export default function WorkDetailPage() {
         setError('作品の読み込みに失敗しました');
         setWork(null);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -149,7 +174,7 @@ export default function WorkDetailPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="mx-8 py-8">
         <div className="animate-pulse">
@@ -381,7 +406,7 @@ export default function WorkDetailPage() {
                       height={48}
                       className="w-full h-full object-cover"
                     />
-                  ) : work.userPhotoURL ? (
+                  ) : work.userPhotoURL && isValidUrl(work.userPhotoURL) ? (
                     <Image
                       src={work.userPhotoURL}
                       alt={work.displayName}

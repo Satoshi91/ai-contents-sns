@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Search, TrendingUp, ChevronLeft, Bug, Heart, Hash, MessageSquare, Plus } from 'lucide-react';
+import { Home, Search, TrendingUp, ChevronLeft, Bug, Heart, Hash, MessageSquare, Plus, Palette } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 
@@ -31,6 +31,12 @@ const menuItems: MenuItem[] = [
     label: 'AIチャット',
     icon: <MessageSquare size={24} />,
     href: '/chat'
+  },
+  {
+    id: 'illustrations',
+    label: 'イラスト一覧',
+    icon: <Palette size={24} />,
+    href: '/illustrations'
   },
   {
     id: 'create-content',
@@ -108,7 +114,7 @@ export function Sidebar({ isOpen, onClose, onToggle }: SidebarProps) {
         className={`
           fixed left-0 top-0 h-full bg-white shadow-lg z-50 
           transition-all duration-300 ease-in-out
-          w-64
+          w-[266px]
           ${isOpen 
             ? 'transform translate-x-0 opacity-100' 
             : 'transform -translate-x-full opacity-0'
@@ -124,7 +130,7 @@ export function Sidebar({ isOpen, onClose, onToggle }: SidebarProps) {
             className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
             aria-label="サイドバーを閉じる"
           >
-            <h2 className="text-lg font-semibold text-gray-900">VOICARISME</h2>
+            <h2 className="text-lg font-semibold text-gray-900">VOICARISME(β)</h2>
             <ChevronLeft size={20} />
           </button>
         </div>
