@@ -1,5 +1,5 @@
 import { db } from './app';
-import { doc, getDoc, updateDoc, serverTimestamp, runTransaction, arrayUnion, arrayRemove, getDocs, query, where, documentId } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, runTransaction, arrayUnion, arrayRemove, getDocs, query, where, documentId } from 'firebase/firestore';
 import { collection } from 'firebase/firestore';
 import { Work } from '@/types/work';
 
@@ -192,7 +192,13 @@ export const getWorksByIds = async (workIds: string[]): Promise<Work[]> => {
           tags: data.tags || [],
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
-        });
+          tagIds: data.tagIds || [],
+          tagNames: data.tagNames || [],
+          isR18Work: data.isR18Work || false,
+          contentRating: data.contentRating || 'all',
+          publishStatus: data.publishStatus || 'public',
+          scriptText: data.scriptText || undefined,
+        } as Work);
       });
     }
 

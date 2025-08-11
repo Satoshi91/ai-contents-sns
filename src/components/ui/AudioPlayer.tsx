@@ -153,7 +153,7 @@ export function AudioPlayer({
             max={duration || 100}
             value={currentTime}
             onChange={handleSeek}
-            disabled={isLoading || error}
+            disabled={isLoading || !!error}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background: `linear-gradient(to right, #3b82f6 ${progressPercentage}%, #e5e7eb ${progressPercentage}%)`

@@ -62,7 +62,7 @@ export default function WorkDetailPage() {
         setIsLoading(true);
         setError(null);
         
-        const workData = await getWork(workId, user?.uid);
+        const workData = await getWork(Array.isArray(workId) ? workId[0] : workId, user?.uid);
         
         if (!workData) {
           setError('作品が見つかりませんでした');
@@ -398,9 +398,9 @@ export default function WorkDetailPage() {
                 onClick={handleUserClick}
               >
                 <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
-                  {work.userPhotoURL && work.userImageId ? (
+                  {work.userPhotoURL ? (
                     <Image
-                      src={getImageURL(work.userImageId, 'avatar')}
+                      src={work.userPhotoURL}
                       alt={work.displayName}
                       width={48}
                       height={48}
@@ -556,7 +556,7 @@ export default function WorkDetailPage() {
 
         {/* コメントセクション */}
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <CommentList workId={workId} initialCommentCount={work.commentCount || 0} />
+          <CommentList workId={Array.isArray(workId) ? workId[0] : (workId || '')} initialCommentCount={work.commentCount || 0} />
         </div>
       </div>
 

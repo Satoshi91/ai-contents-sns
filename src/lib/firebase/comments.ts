@@ -10,8 +10,6 @@ import {
   where,
   orderBy,
   limit,
-  deleteDoc,
-  updateDoc,
   increment,
   runTransaction,
   Timestamp

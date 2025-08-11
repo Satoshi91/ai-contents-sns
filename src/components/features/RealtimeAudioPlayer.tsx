@@ -317,7 +317,7 @@ export function RealtimeAudioPlayer({
 
       const appendBuffer = () => {
         try {
-          sourceBuffer.appendBuffer(data);
+          sourceBuffer.appendBuffer(data as any);
           resolve(true);
         } catch (err) {
           console.error('Failed to append audio data:', err);

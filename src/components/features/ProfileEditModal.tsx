@@ -30,6 +30,7 @@ export function ProfileEditModal({ isOpen, onClose, user, onUpdate }: ProfileEdi
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<UpdateProfileFormData>({
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {
@@ -128,7 +129,7 @@ export function ProfileEditModal({ isOpen, onClose, user, onUpdate }: ProfileEdi
             fullWidth
           />
           <p className="mt-1 text-sm text-gray-500">
-            {(register('bio').value?.length || 0)} / 160
+            {(watch('bio')?.length || 0)} / 160
           </p>
         </div>
 

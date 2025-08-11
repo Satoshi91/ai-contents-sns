@@ -8,12 +8,9 @@ import {
   TwitterAuthProvider,
   sendPasswordResetEmail,
   updateProfile,
-  User as FirebaseUser,
-  AuthError,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './app';
-import { User } from '@/types/user';
 
 const googleProvider = new GoogleAuthProvider();
 const twitterProvider = new TwitterAuthProvider();
@@ -62,19 +59,20 @@ export async function signUp(email: string, password: string, username: string, 
     };
 
     // photoURLがnullでない場合のみ追加
-    if (user.photoURL) {
-      (userData as any).photoURL = user.photoURL;
-    }
+    const finalUserData = user.photoURL 
+      ? { ...userData, photoURL: user.photoURL }
+      : userData;
 
-    await setDoc(doc(db, 'users', user.uid), userData);
+    await setDoc(doc(db, 'users', user.uid), finalUserData);
 
     await setDoc(doc(db, 'usernames', username), {
       uid: user.uid,
     });
 
     return { success: true, user };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -112,8 +110,8 @@ export async function signIn(email: string, password: string) {
     }
 
     return { success: true, user };
-  } catch (error: any) {
-    const errorCode = error.code || '';
+  } catch (error: unknown) {
+    const errorCode = (error as { code?: string })?.code || '';
     const errorMessage = getAuthErrorMessage(errorCode);
     return { success: false, error: errorMessage, errorCode };
   }
@@ -152,8 +150,9 @@ export async function signInWithGoogle() {
     }
 
     return { success: true, user };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -193,8 +192,9 @@ export async function signInWithTwitter() {
     }
 
     return { success: true, user };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -224,9 +224,10 @@ export async function signInAnonymous() {
 
     console.log('Anonymous sign-in successful');
     return { success: true, user };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error signing in anonymously:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -234,8 +235,9 @@ export async function signOut() {
   try {
     await firebaseSignOut(auth);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -245,9 +247,10 @@ export async function resetPassword(email: string) {
     await sendPasswordResetEmail(auth, email);
     console.log('Password reset email sent successfully');
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error sending password reset email:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 }
 

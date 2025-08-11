@@ -58,8 +58,9 @@ export async function getUserWorks(uid: string, limitCount: number = 20, lastDoc
       lastDoc: lastVisible,
       hasMore: snapshot.docs.length === limitCount,
     };
-  } catch (error: any) {
-    return { success: false, error: error.message, works: [], hasMore: false };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage, works: [], hasMore: false };
   }
 }
 
@@ -95,7 +96,7 @@ export async function updateUserProfile(uid: string, updates: Partial<User>) {
     
     // undefinedフィールドを除去
     const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, value]) => value !== undefined)
+      Object.entries(updates).filter(([, value]) => value !== undefined)
     );
     
     await updateDoc(userRef, {
@@ -103,7 +104,8 @@ export async function updateUserProfile(uid: string, updates: Partial<User>) {
       updatedAt: serverTimestamp(),
     });
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 }

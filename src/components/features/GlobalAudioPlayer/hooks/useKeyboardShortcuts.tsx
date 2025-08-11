@@ -14,9 +14,7 @@ export function useKeyboardShortcuts() {
     currentTime, 
     duration, 
     volume,
-    showExpandedPlayer,
-    showMinimizedPlayer,
-    isExpanded 
+    showMinimizedPlayer 
   } = useAudioPlayer();
 
   // スペースキー: 再生/停止切り替え
@@ -83,21 +81,18 @@ export function useKeyboardShortcuts() {
   useHotkeys('f', (e) => {
     e.preventDefault();
     if (currentTrack) {
-      if (isExpanded) {
-        showMinimizedPlayer();
-      } else {
-        showExpandedPlayer();
-      }
+      // Toggle player visibility
+      showMinimizedPlayer();
     }
-  }, { enableOnFormTags: false }, [currentTrack, isExpanded, showMinimizedPlayer, showExpandedPlayer]);
+  }, { enableOnFormTags: false }, [currentTrack, showMinimizedPlayer]);
 
   // ESC: フルスクリーンを閉じる
   useHotkeys('escape', (e) => {
     e.preventDefault();
-    if (currentTrack && isExpanded) {
+    if (currentTrack) {
       showMinimizedPlayer();
     }
-  }, { enableOnFormTags: false }, [currentTrack, isExpanded, showMinimizedPlayer]);
+  }, { enableOnFormTags: false }, [currentTrack, showMinimizedPlayer]);
 
   // M: ミュート切り替え
   useHotkeys('m', (e) => {

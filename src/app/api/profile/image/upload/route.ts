@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
     const imageUrls = {
       avatar: getImageURL(imageId, 'avatar'),
       profile: getImageURL(imageId, 'profile'),
-      public: getImageURL(imageId, 'public'),
     };
 
     return NextResponse.json({

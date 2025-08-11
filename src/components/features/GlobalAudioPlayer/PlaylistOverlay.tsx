@@ -142,16 +142,16 @@ export function PlaylistOverlay() {
                       <p className="text-xs text-gray-500 truncate">
                         {track.displayName}
                       </p>
-                      {track.category && (
+                      {track.tags && track.tags.length > 0 && (
                         <p className="text-xs text-gray-400 truncate">
-                          {track.category}
+                          {typeof track.tags[0] === 'string' ? track.tags[0] : track.tags[0]?.name}
                         </p>
                       )}
                     </div>
 
                     {/* 再生時間 */}
                     <div className="text-xs text-gray-400 ml-2">
-                      {track.duration && formatTime(track.duration)}
+                      {/* Duration not available in Work type */}
                     </div>
 
                     {/* 再生アイコン（ホバー時） */}

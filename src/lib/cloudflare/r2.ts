@@ -125,7 +125,7 @@ export async function getAudioUploadURL(
     const audioId = `audio/${userId}/${workId}${fileExtension}`;
     
     const command = new PutObjectCommand({
-      Bucket: r2Config.bucketName,
+      Bucket: r2Config?.bucketName || '',
       Key: audioId,
       ContentType: fileType,
       Metadata: {
@@ -135,7 +135,7 @@ export async function getAudioUploadURL(
       },
     });
 
-    const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 }); // 1時間有効
+    const uploadUrl = await getSignedUrl(r2Client!, command, { expiresIn: 3600 }); // 1時間有効
 
     return {
       success: true,
@@ -189,7 +189,7 @@ export async function uploadAudioToR2(
     const uint8Array = new Uint8Array(arrayBuffer);
 
     const command = new PutObjectCommand({
-      Bucket: r2Config.bucketName,
+      Bucket: r2Config?.bucketName || '',
       Key: audioId,
       Body: uint8Array,
       ContentType: audioBlob.type || 'audio/mpeg',
@@ -200,7 +200,7 @@ export async function uploadAudioToR2(
       },
     });
 
-    await r2Client.send(command);
+    await r2Client!.send(command);
 
     return {
       success: true,
@@ -226,11 +226,11 @@ export async function deleteAudioFile(audioId: string): Promise<{ success: boole
     }
 
     const command = new DeleteObjectCommand({
-      Bucket: r2Config.bucketName,
+      Bucket: r2Config?.bucketName || '',
       Key: audioId,
     });
 
-    await r2Client.send(command);
+    await r2Client!.send(command);
     return { success: true };
   } catch (error) {
     console.error('R2 audio delete error:', error);
@@ -257,7 +257,7 @@ export function getAudioPublicURL(audioId: string): string {
   }
   
   // フォールバック: R2の直接URL
-  return `https://${r2Config.bucketName}.${r2Config.accountId}.r2.cloudflarestorage.com/${audioId}`;
+  return `https://${r2Config?.bucketName}.${r2Config?.accountId}.r2.cloudflarestorage.com/${audioId}`;
 }
 
 /**
@@ -273,11 +273,11 @@ export async function getAudioDownloadURL(
     }
 
     const command = new GetObjectCommand({
-      Bucket: r2Config.bucketName,
+      Bucket: r2Config?.bucketName || '',
       Key: audioId,
     });
 
-    const url = await getSignedUrl(r2Client, command, { expiresIn });
+    const url = await getSignedUrl(r2Client!, command, { expiresIn });
     return { success: true, url };
   } catch (error) {
     console.error('R2 audio download URL generation error:', error);
@@ -298,11 +298,11 @@ export async function getAudioFileInfo(audioId: string) {
     }
 
     const command = new GetObjectCommand({
-      Bucket: r2Config.bucketName,
+      Bucket: r2Config?.bucketName || '',
       Key: audioId,
     });
 
-    const response = await r2Client.send(command);
+    const response = await r2Client!.send(command);
     return {
       success: true,
       data: {
@@ -371,7 +371,7 @@ export async function getImageUploadURL(
     const imageId = `images/${userId}/${workId}${fileExtension}`;
     
     const command = new PutObjectCommand({
-      Bucket: r2Config.bucketName,
+      Bucket: r2Config?.bucketName || '',
       Key: imageId,
       ContentType: fileType,
       Metadata: {
@@ -381,7 +381,7 @@ export async function getImageUploadURL(
       },
     });
 
-    const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 }); // 1時間有効
+    const uploadUrl = await getSignedUrl(r2Client!, command, { expiresIn: 3600 }); // 1時間有効
 
     return {
       success: true,
@@ -408,11 +408,11 @@ export async function deleteImageFile(imageId: string): Promise<{ success: boole
     }
 
     const command = new DeleteObjectCommand({
-      Bucket: r2Config.bucketName,
+      Bucket: r2Config?.bucketName || '',
       Key: imageId,
     });
 
-    await r2Client.send(command);
+    await r2Client!.send(command);
     return { success: true };
   } catch (error) {
     console.error('R2 image delete error:', error);
@@ -439,7 +439,7 @@ export function getImagePublicURL(imageId: string): string {
   }
   
   // フォールバック: R2の直接URL
-  return `https://${r2Config.bucketName}.${r2Config.accountId}.r2.cloudflarestorage.com/${imageId}`;
+  return `https://${r2Config?.bucketName}.${r2Config?.accountId}.r2.cloudflarestorage.com/${imageId}`;
 }
 
 /**
@@ -452,11 +452,11 @@ export async function getImageFileInfo(imageId: string) {
     }
 
     const command = new GetObjectCommand({
-      Bucket: r2Config.bucketName,
+      Bucket: r2Config?.bucketName || '',
       Key: imageId,
     });
 
-    const response = await r2Client.send(command);
+    const response = await r2Client!.send(command);
     return {
       success: true,
       data: {

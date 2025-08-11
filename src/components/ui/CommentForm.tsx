@@ -16,7 +16,7 @@ interface CommentFormProps {
 }
 
 export default function CommentForm({ workId, onCommentCreated }: CommentFormProps) {
-  const { user, isAnonymous } = useAuth();
+  const { user, userData, isAnonymous } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -29,7 +29,7 @@ export default function CommentForm({ workId, onCommentCreated }: CommentFormPro
   });
 
   const onSubmit = async (data: CreateCommentFormData) => {
-    if (!user || isAnonymous) {
+    if (!user || !userData || isAnonymous) {
       alert('コメントするにはログインが必要です');
       return;
     }
@@ -40,10 +40,9 @@ export default function CommentForm({ workId, onCommentCreated }: CommentFormPro
         workId,
         data,
         user.uid,
-        user.username || '',
-        user.displayName || '',
-        user.photoURL,
-        user.imageId
+        userData.username,
+        userData.displayName,
+        userData.photoURL
       );
 
       if (result.success) {

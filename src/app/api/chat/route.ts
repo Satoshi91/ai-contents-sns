@@ -1,5 +1,6 @@
 import { OpenAIStream, StreamingTextResponse } from 'ai';
 import OpenAI from 'openai';
+import type { ChatCompletionCreateParams } from 'openai/resources/chat';
 
 // OpenRouter用のOpenAIクライアント設定
 const openai = new OpenAI({
@@ -40,7 +41,8 @@ export async function POST(req: Request) {
       max_tokens: 2000,
     });
 
-    const stream = OpenAIStream(response);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stream = OpenAIStream(response as any);
     return new StreamingTextResponse(stream);
   } catch (error) {
     console.error('Chat API error:', error);

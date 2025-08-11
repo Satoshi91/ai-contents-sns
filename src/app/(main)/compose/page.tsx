@@ -188,7 +188,7 @@ export default function ComposePage() {
         ageRating
       });
       if (!validationResult.success) {
-        const firstError = validationResult.error.errors[0];
+        const firstError = validationResult.error.issues[0];
         toast.error(firstError.message);
         return;
       }
@@ -206,7 +206,7 @@ export default function ComposePage() {
           audioUrl: audioUrl || undefined, 
           audioId: audioId || undefined,
           audioOriginalFilename: audioOriginalFilename || undefined,
-          contentType: contentType === 'mixed' ? undefined : contentType, // mixedの場合は自動判定させる
+          contentType: contentType === 'mixed' ? undefined : (contentType as "voice" | "script" | "image"), // mixedの場合は自動判定させる
           ageRating,
           publishStatus
         }, user.uid);
@@ -228,7 +228,7 @@ export default function ComposePage() {
             audioUrl: audioUrl || undefined, 
             audioId: audioId || undefined,
             audioOriginalFilename: audioOriginalFilename || undefined,
-            contentType: contentType === 'mixed' ? undefined : contentType, // mixedの場合は自動判定させる
+            contentType: contentType === 'mixed' ? undefined : (contentType as "voice" | "script" | "image"), // mixedの場合は自動判定させる
             ageRating,
             publishStatus
           },
@@ -500,7 +500,6 @@ export default function ComposePage() {
                     placeholder="タグを入力してEnterで追加（例：恋愛、SF、コメディ）"
                     maxTags={10}
                     maxTagLength={20}
-                    disabled={isSubmitting}
                   />
                   <div className="space-y-1 mt-1">
                     <p className="text-xs text-gray-500">

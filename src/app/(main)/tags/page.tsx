@@ -101,7 +101,7 @@ export default function TagsPage() {
           <div className="flex gap-2">
             <Button
               onClick={() => setSortBy('usage')}
-              variant={sortBy === 'usage' ? 'default' : 'outline'}
+              variant={sortBy === 'usage' ? 'primary' : 'outline'}
               className="cursor-pointer hover:scale-105 transition-transform duration-200"
             >
               <TrendingUp className="w-4 h-4 mr-2" />
@@ -109,7 +109,7 @@ export default function TagsPage() {
             </Button>
             <Button
               onClick={() => setSortBy('name')}
-              variant={sortBy === 'name' ? 'default' : 'outline'}
+              variant={sortBy === 'name' ? 'primary' : 'outline'}
               className="cursor-pointer hover:scale-105 transition-transform duration-200"
             >
               <Grid3X3 className="w-4 h-4 mr-2" />

@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, FieldValue } from 'firebase/firestore';
 import { Message } from 'ai/react';
 
 // チャットセッション
@@ -19,8 +19,8 @@ export interface FirestoreChatSession {
   userId: string;
   title: string;
   mode: 'normal' | 'canvas';
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Timestamp | FieldValue;
+  updatedAt: Timestamp | FieldValue;
   messageCount: number;
   lastMessage?: string;
 }
@@ -44,7 +44,7 @@ export interface FirestoreChatMessage {
   sessionId: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  createdAt: Timestamp;
+  createdAt: Timestamp | FieldValue;
   audioUrl?: string;
   audioId?: string;
   isVoiceGenerated?: boolean;

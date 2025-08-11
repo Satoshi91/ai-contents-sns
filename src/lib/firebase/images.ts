@@ -17,8 +17,7 @@ import {
   ImageDocument, 
   ImagesPaginationResult, 
   ImageFilters, 
-  ImageSortBy, 
-  ImageSortDirection 
+ 
 } from '@/types/image';
 import { ImagesSectionConfig } from '@/types/imageSection';
 

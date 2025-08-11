@@ -42,7 +42,6 @@ interface SaveState {
 export default function ChatPage() {
   const { user } = useAuth();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const currentMode: ChatMode = currentSession?.mode || 'normal';
   const [isCanvasCollapsed, setIsCanvasCollapsed] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'canvas'>('chat');
@@ -69,6 +68,8 @@ export default function ChatPage() {
     saveMessage,
     refreshSessions
   } = useChatHistory();
+  
+  const currentMode: ChatMode = currentSession?.mode || 'normal';
   
   // Canvas同期
   const { 
@@ -239,7 +240,7 @@ export default function ChatPage() {
   const handleCanvasClear = useCallback(() => {
     setCanvasContent('');
     markDirty();
-    toast.info('Canvas内容をクリアしました');
+    toast('Canvas内容をクリアしました');
   }, [markDirty]);
 
   // エクスポート
@@ -723,7 +724,7 @@ export default function ChatPage() {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                   <p className="text-red-600 text-sm">エラーが発生しました: {error.message}</p>
                   <Button 
-                    onClick={reload} 
+                    onClick={() => reload()} 
                     variant="secondary" 
                     size="sm" 
                     className="mt-2 cursor-pointer hover:bg-red-100 transition-colors duration-200"
@@ -820,7 +821,7 @@ export default function ChatPage() {
                   value={input}
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
-                  placeholder={currentMode === 'canvas' ? "Canvasの内容について指示してください..." : "メッセージを入力してください..."}
+                  placeholder={currentSession?.mode === 'canvas' ? "Canvasの内容について指示してください..." : "メッセージを入力してください..."}
                   className="flex-1 resize-none rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={2}
                   disabled={isLoading}

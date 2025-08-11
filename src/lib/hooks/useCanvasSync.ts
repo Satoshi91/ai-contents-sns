@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { collection, doc, setDoc, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, serverTimestamp, Timestamp, FieldValue } from 'firebase/firestore';
 import { db } from '@/lib/firebase/app';
 import { CanvasDocument } from '@/types/canvas';
 import toast from 'react-hot-toast';
@@ -50,8 +50,8 @@ export function useCanvasSync({
       }
 
       const canvasData: Omit<CanvasDocument, 'id' | 'createdAt' | 'updatedAt'> & {
-        createdAt: Timestamp | Date;
-        updatedAt: Timestamp | Date;
+        createdAt: Timestamp | FieldValue;
+        updatedAt: FieldValue;
       } = {
         sessionId,
         userId,

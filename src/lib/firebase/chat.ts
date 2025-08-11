@@ -14,7 +14,7 @@ import {
   serverTimestamp,
   Timestamp,
   startAfter as firestoreStartAfter,
-  DocumentSnapshot
+  FieldValue
 } from 'firebase/firestore';
 import {
   ChatSession,
@@ -43,8 +43,11 @@ const generateSessionTitle = (firstMessage: string): string => {
 };
 
 // FirestoreのTimestampをDateに変換
-const convertTimestampToDate = (timestamp: Timestamp | undefined): Date => {
-  return timestamp?.toDate() || new Date();
+const convertTimestampToDate = (timestamp: Timestamp | FieldValue | undefined): Date => {
+  if (timestamp && typeof (timestamp as Timestamp).toDate === 'function') {
+    return (timestamp as Timestamp).toDate();
+  }
+  return new Date();
 };
 
 // FirestoreChatSessionをChatSessionに変換

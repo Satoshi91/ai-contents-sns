@@ -115,7 +115,6 @@ export function ImageContentForm({
             placeholder="タグを入力してEnterで追加（例：オリジナル、風景、キャラクター）"
             maxTags={10}
             maxTagLength={20}
-            disabled={disabled}
           />
           <div className="space-y-1 mt-1">
             <p className="text-xs text-gray-500">
@@ -129,11 +128,28 @@ export function ImageContentForm({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             年齢制限
           </label>
-          <AgeRatingToggle
-            rating={ageRating}
-            onRatingChange={onAgeRatingChange}
-            disabled={disabled}
-          />
+          <div className="flex items-center space-x-4">
+            <button
+              type="button"
+              onClick={() => onAgeRatingChange('all')}
+              className={`px-3 py-1 rounded-md text-sm ${ageRating === 'all' 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              全年齢
+            </button>
+            <button
+              type="button"
+              onClick={() => onAgeRatingChange('18+')}
+              className={`px-3 py-1 rounded-md text-sm ${ageRating === '18+' 
+                ? 'bg-red-500 text-white' 
+                : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              18+
+            </button>
+          </div>
           <p className="text-xs text-gray-500 mt-1">
             コンテンツの年齢制限を設定してください
           </p>

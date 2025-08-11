@@ -14,28 +14,47 @@ import { Work } from '@/types/work';
 import { RealtimeAudioPlayer } from '@/components/features/RealtimeAudioPlayer';
 import { createWork } from '@/lib/firebase/works';
 import toast from 'react-hot-toast';
+import type { User as FirebaseUser } from 'firebase/auth';
+
+// 型定義を追加
+interface TestResult {
+  timestamp: string;
+  message: string;
+  type: 'info' | 'success' | 'error' | 'warning';
+}
+
+interface UploadedFile {
+  id: string;
+  url: string;
+  name: string;
+}
+
+interface CssTestResults {
+  missingVariables: string[];
+  [key: string]: unknown;
+}
 
 export default function DebugPage() {
   const { user, userData, loading, error, isAnonymous, refreshUserData } = useAuth();
   const [authHistory, setAuthHistory] = useState<string[]>([]);
-  const [firestoreTest, setFirestoreTest] = useState<any>(null);
+  const [firestoreTest, setFirestoreTest] = useState<Record<string, unknown> | null>(null);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
-  const [rawAuthUser, setRawAuthUser] = useState<any>(null);
+  const [rawAuthUser, setRawAuthUser] = useState<Partial<FirebaseUser> | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
   const [createUserError, setCreateUserError] = useState<string | null>(null);
   const [createUserSuccess, setCreateUserSuccess] = useState(false);
 
   // R2テスト関連のstate
-  const [r2TestResults, setR2TestResults] = useState<any[]>([]);
+  const [r2TestResults, setR2TestResults] = useState<TestResult[]>([]);
   const [r2TestFile, setR2TestFile] = useState<File | null>(null);
   const [r2Testing, setR2Testing] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{id: string, url: string, name: string}>>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
   // Cloudflare Imagesテスト関連のstate
-  const [imagesTestResults, setImagesTestResults] = useState<any[]>([]);
+  const [imagesTestResults, setImagesTestResults] = useState<TestResult[]>([]);
   const [imagesTestFile, setImagesTestFile] = useState<File | null>(null);
   const [imagesTesting, setImagesTesting] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<Array<{id: string, url: string, name: string}>>([]);
+  const [uploadedImages, setUploadedImages] = useState<UploadedFile[]>([]);
 
   // WorksCardテスト用のstate
   const [testWorks, setTestWorks] = useState<Work[]>([]);
@@ -61,15 +80,15 @@ export default function DebugPage() {
     tempo_dynamics: 1.0,
     output_format: 'mp3' as 'mp3' | 'wav' | 'aac' | 'opus',
   });
-  const [ttsDebugLogs, setTtsDebugLogs] = useState<Array<{timestamp: string, message: string, type: 'info' | 'success' | 'error'}>>([]);
+  const [ttsDebugLogs, setTtsDebugLogs] = useState<TestResult[]>([]);
 
   // CSS レイアウト検証用のstate
-  const [cssDebugLogs, setCssDebugLogs] = useState<Array<{timestamp: string, message: string, type: 'info' | 'success' | 'error' | 'warning'}>>([]);
+  const [cssDebugLogs, setCssDebugLogs] = useState<TestResult[]>([]);
   const [cssAnalyzing, setCssAnalyzing] = useState(false);
-  const [cssTestResults, setCssTestResults] = useState<any>(null);
+  const [cssTestResults, setCssTestResults] = useState<CssTestResults | null>(null);
 
   // 環境変数チェック用のstate
-  const [envVarsStatus, setEnvVarsStatus] = useState<any>(null);
+  const [envVarsStatus, setEnvVarsStatus] = useState<Record<string, unknown> | null>(null);
   const [envChecking, setEnvChecking] = useState(false);
 
   useEffect(() => {
@@ -607,20 +626,25 @@ export default function DebugPage() {
     addWorksCardLog('テスト用Workデータを作成中...');
     
     // アップロード済み画像を使ってテストWorkを作成
-    const works: Work[] = uploadedImages.map((image, index) => ({
+    const works = uploadedImages.map((image, index) => ({
       id: `test-work-${index}`,
       title: `テスト作品${index + 1}: ${image.name}`,
       description: `デバッグ用テスト作品です。ImageID: ${image.id}`,
       imageUrl: image.url,
       imageId: image.id,
-      audioUrl: uploadedFiles[0]?.url || null,
-      audioId: uploadedFiles[0]?.id || null,
+      audioUrl: uploadedFiles[0]?.url || undefined,
+      audioId: uploadedFiles[0]?.id || undefined,
       userId: user?.uid || 'test-user',
       username: userData?.username || 'test-username',
       displayName: userData?.displayName || 'テストユーザー',
       userPhotoURL: user?.photoURL || null,
       tags: ['デバッグ', 'テスト'],
+      tagIds: ['debug', 'test'],
+      tagNames: ['デバッグ', 'テスト'],
       likeCount: Math.floor(Math.random() * 100),
+      isR18Work: false,
+      contentRating: 'all' as const,
+      publishStatus: 'public' as const,
       createdAt: new Date(),
       updatedAt: new Date()
     }));
@@ -633,20 +657,25 @@ export default function DebugPage() {
         description: 'CLOUDFLARE_ACCOUNT_HASHがundefinedの場合のテスト',
         imageUrl: 'https://imagedelivery.net/undefined/dummy-image-id/gallery',
         imageId: 'dummy-image-id',
-        audioUrl: null,
-        audioId: null,
+        audioUrl: undefined,
+        audioId: undefined,
         userId: user?.uid || 'test-user',
         username: userData?.username || 'test-username', 
         displayName: userData?.displayName || 'テストユーザー',
         userPhotoURL: user?.photoURL || null,
         tags: ['環境変数', 'テスト'],
+        tagIds: ['env', 'test'],
+        tagNames: ['環境変数', 'テスト'],
         likeCount: 42,
+        isR18Work: false,
+        contentRating: 'all' as const,
+        publishStatus: 'public' as const,
         createdAt: new Date(),
         updatedAt: new Date()
       });
     }
 
-    setTestWorks(works);
+    setTestWorks(works as unknown as Work[]);
     addWorksCardLog(`${works.length}個のテストWorkデータを作成しました`, 'success');
     
     // 各WorkのImageURLを検証
@@ -1440,11 +1469,11 @@ export default function DebugPage() {
                   {firestoreTest.exists ? 'はい' : 'いいえ'}
                 </span>
               </p>
-              {firestoreTest.data && (
+              {firestoreTest?.data ? (
                 <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">
-                  {JSON.stringify(firestoreTest.data, null, 2)}
+                  {JSON.stringify(firestoreTest.data as Record<string, unknown>, null, 2)}
                 </pre>
-              )}
+              ) : null}
             </div>
           ) : (
             <p className="text-gray-600">テスト未実行</p>
@@ -2524,7 +2553,7 @@ export default function DebugPage() {
               <div className="border rounded-lg p-4">
                 <h3 className="font-medium mb-3">詳細解析結果</h3>
                 <div className="space-y-3">
-                  {cssTestResults.missingVariables.length > 0 && (
+                  {cssTestResults.missingVariables?.length > 0 && (
                     <div className="bg-red-50 border border-red-200 rounded p-3">
                       <h4 className="font-medium text-red-800 mb-2">未定義CSS変数</h4>
                       <div className="text-sm text-red-700">

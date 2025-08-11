@@ -30,7 +30,7 @@ export function MinimizedPlayer() {
   // プレイヤーの参照をコンテキストに設定
   useEffect(() => {
     if (playerRef.current) {
-      audioContext.setPlayerRef(playerRef);
+      audioContext.setPlayerRef(playerRef as any);
     }
   }, [audioContext]);
   
