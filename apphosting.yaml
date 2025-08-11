@@ -6,9 +6,9 @@ service: default
 build:
   buildSteps:
     - name: 'gcr.io/cloud-builders/npm'
-      args: ['install', '--legacy-peer-deps']
+      args: [ 'install', '--legacy-peer-deps' ]
     - name: 'gcr.io/cloud-builders/npm'
-      args: ['run', 'build']
+      args: [ 'run', 'build' ]
 
 # Environment variables (list format)
 env:
@@ -17,6 +17,38 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: OPENROUTER_API_KEY
+    secret: OPENROUTER_API_KEY
+  - variable: FIREBASE_ADMIN_PROJECT_ID
+    secret: FIREBASE_ADMIN_PROJECT_ID
+  - variable: FIREBASE_ADMIN_CLIENT_EMAIL
+    secret: FIREBASE_ADMIN_CLIENT_EMAIL
+  - variable: FIREBASE_ADMIN_PRIVATE_KEY
+    secret: FIREBASE_ADMIN_PRIVATE_KEY
+  - variable: AIVIS_API_KEY
+    secret: AIVIS_API_KEY
+  - variable: CLOUDFLARE_IMAGES_API_TOKEN
+    secret: CLOUDFLARE_IMAGES_API_TOKEN
+  - variable: CLOUDFLARE_ACCOUNT_ID
+    secret: CLOUDFLARE_ACCOUNT_ID
+  - variable: CLOUDFLARE_IMAGES_ACCOUNT_HASH
+    secret: CLOUDFLARE_IMAGES_ACCOUNT_HASH
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: NEXT_PUBLIC_FIREBASE_APP_ID
+  - variable: NEXT_PUBLIC_DEFAULT_AI_MODEL
+    secret: NEXT_PUBLIC_DEFAULT_AI_MODEL
+  - variable: NEXT_PUBLIC_CLOUDFLARE_IMAGES_ACCOUNT_HASH
+    secret: NEXT_PUBLIC_CLOUDFLARE_IMAGES_ACCOUNT_HASH
 
 # Run configuration
 runConfig:
