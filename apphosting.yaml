@@ -4,7 +4,11 @@ service: default
 
 # Build configuration
 build:
-  buildCommand: npm run build
+  buildSteps:
+    - name: 'gcr.io/cloud-builders/npm'
+      args: ['install', '--legacy-peer-deps']
+    - name: 'gcr.io/cloud-builders/npm'
+      args: ['run', 'build']
 
 # Environment variables (list format)
 env:
