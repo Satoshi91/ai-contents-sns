@@ -12,6 +12,10 @@ build:
   env:
     - variable: NPM_CONFIG_LEGACY_PEER_DEPS
       value: "true"
+    - variable: NPM_CONFIG_FUND
+      value: "false"
+    - variable: NPM_CONFIG_AUDIT
+      value: "false"
 
 # Environment variables (list format)
 env:
