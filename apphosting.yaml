@@ -6,13 +6,18 @@ service: default
 build:
   buildCommand: npm run build
 
-# Environment configuration
+# Environment variables (list format)
 env:
-  NODE_ENV: production
+  - variable: NODE_ENV
+    value: production
+    availability:
+      - BUILD
+      - RUNTIME
 
-# CPU and memory settings
-cpu: 1
-memory: 1Gi
-
-# Concurrency settings
-concurrency: 100
+# Run configuration
+runConfig:
+  minInstances: 0
+  maxInstances: 100
+  cpu: 1
+  memory: 1Gi
+  concurrency: 100
