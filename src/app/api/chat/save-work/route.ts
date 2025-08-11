@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
+import { adminAuth, isFirebaseAdminInitialized, requireFirebaseAdmin } from '@/lib/firebase/admin';
 import { createWork } from '@/lib/firebase/works';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/app';
@@ -23,6 +23,14 @@ interface SaveWorkResponse {
 
 export async function POST(req: NextRequest): Promise<NextResponse<SaveWorkResponse>> {
   try {
+    // Firebase Admin SDK初期化チェック
+    if (!isFirebaseAdminInitialized()) {
+      return NextResponse.json(
+        { success: false, error: 'サーバーの設定に問題があります。管理者に連絡してください。' },
+        { status: 500 }
+      );
+    }
+
     // 認証確認
     const authHeader = req.headers.get('authorization');
     
@@ -37,7 +45,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<SaveWorkRespo
     
     let decodedToken;
     try {
-      decodedToken = await adminAuth.verifyIdToken(token);
+      const { adminAuth: auth } = requireFirebaseAdmin();
+      decodedToken = await auth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json(
         { success: false, error: '認証トークンが無効です' },

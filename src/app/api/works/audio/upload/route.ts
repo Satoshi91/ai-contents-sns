@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
+import { adminAuth, isFirebaseAdminInitialized, requireFirebaseAdmin } from '@/lib/firebase/admin';
 import { getAudioUploadURL } from '@/lib/cloudflare/r2';
 
 export async function POST(request: NextRequest) {
   try {
+    // Firebase Admin SDK初期化チェック
+    if (!isFirebaseAdminInitialized()) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -17,7 +25,8 @@ export async function POST(request: NextRequest) {
     
     let decodedToken;
     try {
-      decodedToken = await adminAuth.verifyIdToken(token);
+      const { adminAuth: auth } = requireFirebaseAdmin();
+      decodedToken = await auth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json(
         { error: 'Invalid token' },

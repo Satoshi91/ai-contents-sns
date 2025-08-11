@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { adminAuth, adminDb, isFirebaseAdminInitialized, requireFirebaseAdmin } from '@/lib/firebase/admin';
 import { deleteImage } from '@/lib/cloudflare/images';
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Firebase Admin SDK初期化チェック
+    if (!isFirebaseAdminInitialized()) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -17,7 +25,8 @@ export async function DELETE(request: NextRequest) {
     
     let decodedToken;
     try {
-      decodedToken = await adminAuth.verifyIdToken(token);
+      const { adminAuth: auth } = requireFirebaseAdmin();
+      decodedToken = await auth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json(
         { error: 'Invalid token' },
@@ -37,7 +46,8 @@ export async function DELETE(request: NextRequest) {
 
     await deleteImage(imageId);
     
-    await adminDb.collection('users').doc(userId).update({
+    const { adminDb: db } = requireFirebaseAdmin();
+    await db.collection('users').doc(userId).update({
       photoURL: null,
       updatedAt: new Date(),
     });

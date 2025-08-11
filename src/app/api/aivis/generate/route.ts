@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
+import { adminAuth, isFirebaseAdminInitialized, requireFirebaseAdmin } from '@/lib/firebase/admin';
 import { getAudioUploadURL } from '@/lib/cloudflare/r2';
 
 interface AivisGenerateRequest {
@@ -24,6 +24,14 @@ const AIVIS_API_BASE_URL = 'https://api.aivis-project.com/v1';
 
 export async function POST(req: NextRequest): Promise<NextResponse<AivisGenerateResponse>> {
   try {
+    // Firebase Admin SDK初期化チェック
+    if (!isFirebaseAdminInitialized()) {
+      return NextResponse.json(
+        { success: false, error: 'サーバーの設定に問題があります。管理者に連絡してください。' },
+        { status: 500 }
+      );
+    }
+
     // 認証確認
     const authHeader = req.headers.get('authorization');
     
@@ -38,7 +46,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<AivisGenerate
     
     let decodedToken;
     try {
-      decodedToken = await adminAuth.verifyIdToken(token);
+      const { adminAuth: auth } = requireFirebaseAdmin();
+      decodedToken = await auth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json(
         { success: false, error: '認証トークンが無効です' },
