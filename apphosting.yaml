@@ -9,6 +9,9 @@ build:
       args: [ 'install', '--legacy-peer-deps' ]
     - name: 'gcr.io/cloud-builders/npm'
       args: [ 'run', 'build' ]
+  env:
+    - variable: NPM_CONFIG_LEGACY_PEER_DEPS
+      value: "true"
 
 # Environment variables (list format)
 env:
