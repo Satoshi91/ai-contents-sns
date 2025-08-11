@@ -69,10 +69,10 @@ export function ChatSessionSidebar({
         {/* 新規チャットボタン */}
         <Button
           onClick={onCreateSession}
-          className="w-full mb-3 cursor-pointer hover:bg-blue-600 transition-colors duration-200"
+          className="w-full mb-3 flex items-center space-x-2 cursor-pointer hover:bg-blue-600 transition-colors duration-200"
           size="sm"
         >
-          <Plus size={16} className="mr-2" />
+          <Plus size={16} />
           新しいチャット
         </Button>
         

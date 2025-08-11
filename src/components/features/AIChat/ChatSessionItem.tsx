@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChatSession } from '@/types/chat';
-import { MessageCircle, Edit2, Trash2, Check, X } from 'lucide-react';
+import { MessageCircle, Edit2, Trash2, Check, X, Edit3 } from 'lucide-react';
 
 interface ChatSessionItemProps {
   session: ChatSession;
@@ -103,10 +103,17 @@ export function ChatSessionItem({
             isSelected ? 'bg-blue-100' : 'bg-gray-100'
           }`}
         >
-          <MessageCircle
-            size={16}
-            className={isSelected ? 'text-blue-600' : 'text-gray-500'}
-          />
+          {session.mode === 'canvas' ? (
+            <Edit3
+              size={16}
+              className={isSelected ? 'text-blue-600' : 'text-gray-500'}
+            />
+          ) : (
+            <MessageCircle
+              size={16}
+              className={isSelected ? 'text-blue-600' : 'text-gray-500'}
+            />
+          )}
         </div>
 
         {/* コンテンツエリア */}

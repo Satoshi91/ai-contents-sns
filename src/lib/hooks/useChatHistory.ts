@@ -33,7 +33,7 @@ interface UseChatHistoryReturn {
   messages: ExtendedMessage[];
   
   // セッション操作
-  createNewSession: (title?: string, firstMessage?: string) => Promise<string | null>;
+  createNewSession: (title?: string, firstMessage?: string, mode?: 'normal' | 'canvas') => Promise<string | null>;
   selectSession: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => Promise<boolean>;
   removeSession: (sessionId: string) => Promise<boolean>;
@@ -114,13 +114,15 @@ export function useChatHistory(): UseChatHistoryReturn {
   // 新しいセッションを作成
   const createNewSession = useCallback(async (
     title?: string,
-    firstMessage?: string
+    firstMessage?: string,
+    mode: 'normal' | 'canvas' = 'normal'
   ): Promise<string | null> => {
     if (!user?.uid) return null;
 
     try {
       const input: CreateSessionInput = {
-        title: title || '新しいチャット',
+        title: title || (mode === 'canvas' ? '新しいCanvas' : '新しいチャット'),
+        mode,
         firstMessage: firstMessage,
       };
 

@@ -55,6 +55,7 @@ const convertFirestoreSessionToSession = (
   id,
   userId: data.userId,
   title: data.title,
+  mode: data.mode || 'normal', // 既存データの互換性のため
   createdAt: convertTimestampToDate(data.createdAt),
   updatedAt: convertTimestampToDate(data.updatedAt),
   messageCount: data.messageCount,
@@ -90,9 +91,10 @@ export const createChatSession = async (
 
     const title = input.title.trim() || (input.firstMessage ? generateSessionTitle(input.firstMessage) : '新しいチャット');
 
-    const sessionData: any = {
+    const sessionData: Partial<FirestoreChatSession> = {
       userId,
       title,
+      mode: input.mode || 'normal',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       messageCount: 0,
@@ -210,7 +212,7 @@ export const updateChatSession = async (
       return { success: false, error: 'セッション更新の権限がありません' };
     }
 
-    const updateData: any = {
+    const updateData: Partial<FirestoreChatSession> = {
       updatedAt: serverTimestamp(),
     };
 

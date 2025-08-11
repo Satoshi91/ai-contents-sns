@@ -128,23 +128,21 @@ export function ImageCard({
 
         {/* オーバーレイアクション */}
         {showActions && (
-          <div className="absolute inset-0 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <div className="flex space-x-2">
-              <button
-                onClick={handleAddVoice}
-                className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
-                title="ボイスを追加"
-              >
-                <Plus size={16} />
-              </button>
-              <button
-                onClick={handleFavorite}
-                className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors duration-200 cursor-pointer"
-                title="お気に入りに追加"
-              >
-                <Heart size={16} />
-              </button>
-            </div>
+          <div className="absolute bottom-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+            <button
+              onClick={handleAddVoice}
+              className="w-12 h-12 bg-white text-blue-600 rounded-full shadow-lg cursor-pointer hover:scale-110 hover:bg-white transition-all duration-200 flex items-center justify-center"
+              title="ボイスを追加"
+            >
+              <Plus size={20} />
+            </button>
+            <button
+              onClick={handleFavorite}
+              className="w-12 h-12 bg-white text-red-600 rounded-full shadow-lg cursor-pointer hover:scale-110 hover:bg-white transition-all duration-200 flex items-center justify-center"
+              title="お気に入りに追加"
+            >
+              <Heart size={20} />
+            </button>
           </div>
         )}
 

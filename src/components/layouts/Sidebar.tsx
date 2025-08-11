@@ -42,7 +42,7 @@ const menuItems: MenuItem[] = [
     id: 'create-content',
     label: 'コンテンツ投稿',
     icon: <Plus size={24} />,
-    href: '/content/create',
+    href: '/compose',
     requireAuth: true
   },
   {

@@ -6,6 +6,7 @@ export interface ChatSession {
   id: string;
   userId: string;
   title: string;
+  mode: 'normal' | 'canvas';
   createdAt: Date;
   updatedAt: Date;
   messageCount: number;
@@ -17,6 +18,7 @@ export interface FirestoreChatSession {
   id: string;
   userId: string;
   title: string;
+  mode: 'normal' | 'canvas';
   createdAt: Timestamp;
   updatedAt: Timestamp;
   messageCount: number;
@@ -51,6 +53,7 @@ export interface FirestoreChatMessage {
 // セッション作成用の入力型
 export interface CreateSessionInput {
   title: string;
+  mode: 'normal' | 'canvas';
   firstMessage?: string;
 }
 

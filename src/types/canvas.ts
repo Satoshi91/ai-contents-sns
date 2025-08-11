@@ -3,6 +3,7 @@
 export interface CanvasResponse {
   chatContent: string;           // AI回答文
   canvasContent?: string;        // Canvas更新内容
+  canvasTitle?: string;          // Canvas タイトル（自動生成）
   canvasAction?: 'append' | 'replace' | 'insert';
   insertPosition?: number;       // insert時の位置
 }

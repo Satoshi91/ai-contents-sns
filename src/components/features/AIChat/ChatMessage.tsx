@@ -86,18 +86,26 @@ export function ChatMessage({ message }: ChatMessageProps) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       const audioChunks: Uint8Array[] = [];
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        buffer += chunk;
+
+        // 行ごとに分割（完全な行のみ処理）
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 最後の不完全な行をバッファに保持
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+
             try {
-              const data = JSON.parse(line.slice(6));
+              const data = JSON.parse(jsonStr);
               
               // 初期化データ
               if (data.chunkId === 'init') {
@@ -171,7 +179,28 @@ export function ChatMessage({ message }: ChatMessageProps) {
               }
 
             } catch (parseError) {
-              console.error('データパースエラー:', parseError);
+              console.error('JSONパースエラー:', parseError);
+              console.error('問題のあるJSON:', jsonStr);
+              console.error('行全体:', line);
+              
+              // パースエラーは無視して処理を続行
+              continue;
+            }
+          }
+        }
+      }
+
+      // 最後にバッファに残ったデータを処理
+      if (buffer.trim()) {
+        if (buffer.startsWith('data: ')) {
+          const jsonStr = buffer.slice(6).trim();
+          if (jsonStr) {
+            try {
+              const data = JSON.parse(jsonStr);
+              console.log('最後のバッファデータ:', data);
+            } catch (parseError) {
+              console.error('最後のバッファのパースエラー:', parseError);
+              console.error('バッファ内容:', buffer);
             }
           }
         }
