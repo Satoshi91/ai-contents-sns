@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
+import type { UIMessage } from 'ai';
 import { Send, Bot, MessageCircle, Edit3, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ChatMessage } from '@/components/features/AIChat/ChatMessage';
@@ -16,6 +17,16 @@ import { auth } from '@/lib/firebase/app';
 import toast from 'react-hot-toast';
 
 type ChatMode = 'normal' | 'canvas';
+
+// UIMessageからテキストコンテンツを取得するヘルパー関数
+function getMessageContent(message: UIMessage): string {
+  if (!message.parts) return '';
+  
+  return message.parts
+    .filter(part => part.type === 'text')
+    .map(part => (part as any).text || '')
+    .join('');
+}
 
 interface VoiceState {
   status: 'idle' | 'generating' | 'completed' | 'error';
@@ -93,7 +104,7 @@ export default function ChatPage() {
   }, []);
   
   // Canvas更新の処理
-  const handleCanvasResponse = useCallback(async (message: { content: string }) => {
+  const handleCanvasResponse = useCallback(async (message: UIMessage) => {
     if (currentMode !== 'canvas') return;
     
     try {
@@ -101,7 +112,7 @@ export default function ChatPage() {
       let response: CanvasResponse;
       
       try {
-        response = JSON.parse(message.content);
+        response = JSON.parse(getMessageContent(message));
       } catch {
         // JSON形式でない場合は、chatContentとして扱う
         console.log('Non-JSON response, treating as chat content');
@@ -158,55 +169,37 @@ export default function ChatPage() {
     }
   }, [currentMode, canvasContent, markDirty, isMobileView]);
 
+  // 手動入力状態管理（AI SDK 5対応）
+  const [input, setInput] = useState('');
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  };
+
   // AI チャット機能
   const { 
     messages: aiMessages, 
-    input, 
-    handleInputChange, 
-    handleSubmit: originalHandleSubmit, 
-    isLoading,
+    status,
     error,
-    reload,
+    regenerate,
     stop,
-    setMessages: setAiMessages
+    setMessages: setAiMessages,
+    sendMessage
   } = useChat({
     api: currentMode === 'canvas' ? '/api/chat/canvas' : '/api/chat',
-    body: currentMode === 'canvas' ? { canvasContent, canvasTitle } : undefined,
-    initialMessages: [],
-    onError: (error) => {
-      console.error('Chat error:', error);
-      toast.error('チャットでエラーが発生しました');
-    },
-    onFinish: async (message) => {
-      // Canvas更新処理
-      if (currentMode === 'canvas') {
-        await handleCanvasResponse(message);
-      }
-      
-      // ログイン済みユーザーのみFirestoreに保存
-      if (user && currentSession?.id) {
-        await saveMessage('assistant', message.content);
-      }
-    }
-  });
+  } as any);
+
+  // AI SDK 5対応：statusからisLoading計算
+  const isLoading = status === 'submitted' || status === 'streaming';
 
   // ログイン済みユーザーのみセッションからメッセージを同期
   useEffect(() => {
-    if (user) {
-      if (historyMessages.length > 0) {
-        // ログイン済みユーザー：チャット履歴からAIチャット用のメッセージ形式に変換
-        const aiFormattedMessages = historyMessages.map(msg => ({
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
-          createdAt: msg.createdAt
-        }));
-        setAiMessages(aiFormattedMessages);
-      } else {
-        setAiMessages([]);
-      }
+    if (user && historyMessages.length > 0) {
+      // ExtendedMessageはUIMessageを拡張しているので、そのまま使用可能
+      setAiMessages(historyMessages as UIMessage[]);
+    } else if (user) {
+      setAiMessages([]);
     }
-    // ゲストユーザーの場合はuseChatが管理するaiMessages（内部状態）をそのまま使用
+    // ゲストユーザーの場合はuseChatが管理するaiMessagesを使用
   }, [user, historyMessages, setAiMessages]);
   
   // 表示用メッセージ配列はaiMessagesを統一使用
@@ -360,11 +353,16 @@ export default function ChatPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!input.trim()) return;
+    
+    const messageContent = input.trim();
+    setInput(''); // 入力をクリア
+    
     if (user) {
       // ログイン済みユーザー：Firestore保存
       if (!currentSession?.id) {
         // セッションがない場合は新規作成（デフォルトで通常モード）
-        const sessionId = await createNewSession('新しいチャット', input.trim(), 'normal');
+        const sessionId = await createNewSession('新しいチャット', messageContent, 'normal');
         if (!sessionId) {
           toast.error('チャットセッションの作成に失敗しました');
           return;
@@ -374,24 +372,27 @@ export default function ChatPage() {
       
       // ユーザーメッセージをFirestoreに保存
       if (currentSession?.id) {
-        await saveMessage('user', input.trim());
+        await saveMessage('user', messageContent);
       }
     }
-    // ゲストユーザーはuseChat内部で自動的にメッセージが管理される
     
     // モバイルでメッセージ送信後にチャットタブに切り替え
     if (isMobileView && currentMode === 'canvas') {
       setActiveTab('chat');
     }
     
-    // AI チャット処理を実行
-    originalHandleSubmit(e);
+    // AI チャット処理を実行（UIMessage形式）
+    await sendMessage({
+      id: crypto.randomUUID(),
+      role: 'user',
+      parts: [{ type: 'text', text: messageContent }]
+    } as UIMessage);
   };
   
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSubmit(e as any);
     }
   };
 
@@ -516,18 +517,7 @@ export default function ChatPage() {
                     {aiMessages.map((message) => (
                       <div key={message.id} className="mb-4">
                         <ChatMessage 
-                          message={{
-                            ...message,
-                            // JSON レスポンスの場合は chatContent のみ表示
-                            content: (() => {
-                              try {
-                                const parsed = JSON.parse(message.content);
-                                return parsed.chatContent || message.content;
-                              } catch {
-                                return message.content;
-                              }
-                            })()
-                          }} 
+                          message={message} 
                         />
                       </div>
                     ))}
@@ -629,18 +619,7 @@ export default function ChatPage() {
                       {aiMessages.map((message) => (
                         <div key={message.id}>
                           <ChatMessage 
-                            message={{
-                              ...message,
-                              // JSON レスポンスの場合は chatContent のみ表示
-                              content: (() => {
-                                try {
-                                  const parsed = JSON.parse(message.content);
-                                  return parsed.chatContent || message.content;
-                                } catch {
-                                  return message.content;
-                                }
-                              })()
-                            }} 
+                            message={message} 
                           />
                         </div>
                       ))}
@@ -724,7 +703,7 @@ export default function ChatPage() {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                   <p className="text-red-600 text-sm">エラーが発生しました: {error.message}</p>
                   <Button 
-                    onClick={() => reload()} 
+                    onClick={() => regenerate()} 
                     variant="secondary" 
                     size="sm" 
                     className="mt-2 cursor-pointer hover:bg-red-100 transition-colors duration-200"

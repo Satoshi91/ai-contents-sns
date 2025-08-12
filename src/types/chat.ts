@@ -1,5 +1,5 @@
 import { Timestamp, FieldValue } from 'firebase/firestore';
-import { Message } from 'ai/react';
+import type { UIMessage } from 'ai';
 
 // チャットセッション
 export interface ChatSession {
@@ -95,10 +95,10 @@ export interface GetMessagesOptions {
   startAfter?: Date;
 }
 
-// ai/reactのMessage型を拡張
-export interface ExtendedMessage extends Message {
+// AI SDK 5のUIMessage型を使用
+export type ExtendedMessage = UIMessage & {
   audioUrl?: string;
   audioId?: string;
   isVoiceGenerated?: boolean;
   createdAt?: Date;
-}
+};

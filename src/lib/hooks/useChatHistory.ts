@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Message } from 'ai/react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import {
   ChatSession,
-  ChatMessage,
   ExtendedMessage,
   CreateSessionInput,
   SaveMessageInput,
@@ -91,11 +89,11 @@ export function useChatHistory(): UseChatHistoryReturn {
         orderDirection: 'asc'
       });
 
-      // ChatMessageをExtendedMessageに変換
+      // ChatMessageをExtendedMessage（UIMessage）形式に変換
       const extendedMessages: ExtendedMessage[] = messagesData.map((msg) => ({
         id: msg.id,
-        role: msg.role,
-        content: msg.content,
+        role: msg.role as 'system' | 'user' | 'assistant',
+        parts: [{ type: 'text', text: msg.content }],
         createdAt: msg.createdAt,
         audioUrl: msg.audioUrl,
         audioId: msg.audioId,
@@ -239,8 +237,8 @@ export function useChatHistory(): UseChatHistoryReturn {
         // ローカルメッセージ一覧を更新（オプティミスティックアップデート）
         const newMessage: ExtendedMessage = {
           id: result.messageId || Date.now().toString(),
-          role,
-          content,
+          role: role as 'system' | 'user' | 'assistant',
+          parts: [{ type: 'text', text: content }],
           createdAt: new Date(),
         };
         
@@ -320,8 +318,8 @@ export function useChatHistory(): UseChatHistoryReturn {
       if (messagesData.length > 0) {
         const extendedMessages: ExtendedMessage[] = messagesData.map((msg) => ({
           id: msg.id,
-          role: msg.role,
-          content: msg.content,
+          role: msg.role as 'system' | 'user' | 'assistant',
+          parts: [{ type: 'text', text: msg.content }],
           createdAt: msg.createdAt,
           audioUrl: msg.audioUrl,
           audioId: msg.audioId,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Message } from 'ai/react';
+import type { UIMessage } from 'ai';
 import { Bot, User, Volume2, Loader, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { AudioPlayer } from '@/components/ui/AudioPlayer';
@@ -9,7 +9,29 @@ import { useAuthContext } from '@/lib/contexts/AuthContext';
 import { auth } from '@/lib/firebase/app';
 
 interface ChatMessageProps {
-  message: Message;
+  message: UIMessage;
+}
+
+// UIMessageからテキストコンテンツを取得するヘルパー関数
+function getMessageContent(message: UIMessage): string {
+  if (!message.parts) return '';
+  
+  const content = message.parts
+    .filter(part => part.type === 'text')
+    .map(part => (part as any).text || '')
+    .join('');
+  
+  // CanvasモードのJSONレスポンスの場合、chatContentのみを表示
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed.chatContent) {
+      return parsed.chatContent;
+    }
+  } catch {
+    // JSONではない場合はそのまま返す
+  }
+  
+  return content;
 }
 
 interface VoiceState {
@@ -69,7 +91,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text: message.content,
+          text: getMessageContent(message),
           output_format: 'mp3',
           use_ssml: true,
         }),
@@ -237,9 +259,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          title: `AI音声: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
+          title: `AI音声: ${getMessageContent(message).substring(0, 50)}${getMessageContent(message).length > 50 ? '...' : ''}`,
           caption: isPublic ? `AIチャットから生成された音声作品` : '',
-          script: message.content, // AIチャットのメッセージ内容をスクリプトとして保存
+          script: getMessageContent(message), // AIチャットのメッセージ内容をスクリプトとして保存
           audioUrl: voiceState.audioUrl,
           audioId: voiceState.audioId,
           isPublic,
@@ -295,7 +317,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 : 'bg-white text-gray-900 shadow-sm'
             }`}
           >
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            <p className="whitespace-pre-wrap">{getMessageContent(message)}</p>
           </div>
 
           {/* AI メッセージの場合のみ音声生成機能を表示 */}

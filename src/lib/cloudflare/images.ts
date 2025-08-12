@@ -128,6 +128,50 @@ export async function getWorkThumbnailUploadURL(userId: string, workId: string):
   };
 }
 
+export async function getCharacterImageUploadURL(userId: string, characterId: string): Promise<{ uploadURL: string; imageId: string }> {
+  const imageId = `character-${characterId}-${userId}`;
+  
+  // FormDataを使用してCloudflare Images APIにリクエストを送信
+  const formData = new FormData();
+  formData.append('id', imageId);
+  formData.append('requireSignedURLs', 'false');
+  formData.append('metadata', JSON.stringify({
+    userId,
+    characterId,
+    type: 'character-image',
+  }));
+  
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v2/direct_upload`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+        // Content-Typeヘッダーを削除（FormDataが自動設定）
+      },
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Cloudflare Images API Error Response:', errorText);
+    throw new Error(`Failed to get character image upload URL: ${response.statusText} - ${errorText}`);
+  }
+
+  const data: DirectUploadResponse = await response.json();
+  
+  if (!data.success) {
+    console.error('Cloudflare Images API Error:', data.errors);
+    throw new Error(`Cloudflare API error: ${JSON.stringify(data.errors)}`);
+  }
+
+  return {
+    uploadURL: data.result.uploadURL,
+    imageId: data.result.id,
+  };
+}
+
 export async function deleteImage(imageId: string): Promise<boolean> {
   const response = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/images/v1/${imageId}`,

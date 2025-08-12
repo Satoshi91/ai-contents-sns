@@ -11,13 +11,14 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.1",
     "@ai-sdk/openai": "^2.0.8",
+    "@ai-sdk/react": "^2.0.9",
     "@aws-sdk/client-s3": "^3.864.0",
     "@aws-sdk/s3-request-presigner": "^3.864.0",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-scroll-area": "^1.2.9",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-tabs": "^1.1.12",
-    "ai": "^3.4.33",
+    "ai": "^5.0.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -26,7 +27,6 @@
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.536.0",
     "next": "15.4.5",
-    "openai": "^5.12.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-h5-audio-player": "^3.10.0",
@@ -35,7 +35,7 @@
     "react-hotkeys-hook": "^5.1.0",
     "react-masonry-css": "^1.0.16",
     "tailwind-merge": "^3.3.1",
-    "zod": "^4.0.15"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

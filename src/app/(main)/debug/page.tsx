@@ -849,10 +849,20 @@ export default function DebugPage() {
     
     try {
       const token = await user.getIdToken();
-      addAiChatLog('Firebase認証トークンを取得');
+      addAiChatLog('🔑 Firebase認証トークンを取得');
+      addAiChatLog(`Token: ${token.substring(0, 30)}...`);
       
-      // 環境変数確認
-      addAiChatLog('OpenRouter API設定の確認中...');
+      const testMessage = 'Hello, this is a connection test.';
+      const requestBody = {
+        messages: [{
+          id: crypto.randomUUID(),
+          role: 'user',
+          parts: [{ type: 'text', text: testMessage }]
+        }]
+      };
+      
+      addAiChatLog('📤 API接続テストリクエスト送信:');
+      addAiChatLog(`Body: ${JSON.stringify(requestBody, null, 2)}`);
       
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -860,10 +870,11 @@ export default function DebugPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Hello, this is a connection test.' }]
-        })
+        body: JSON.stringify(requestBody)
       });
+      
+      addAiChatLog('📥 レスポンス受信:');
+      addAiChatLog(`Status: ${response.status} ${response.statusText}`);
 
       if (response.ok) {
         addAiChatLog('AI API接続成功', 'success');
@@ -878,8 +889,18 @@ export default function DebugPage() {
             if (done) break;
             
             const chunk = decoder.decode(value);
-            result += chunk;
-            addAiChatLog(`ストリームチャンク受信: ${chunk.slice(0, 50)}...`);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('0:')) {
+                const textMatch = line.match(/^0:"(.+)"$/);
+                if (textMatch) {
+                  const text = textMatch[1];
+                  result += text;
+                  addAiChatLog(`ストリームチャンク受信: ${text.slice(0, 50)}...`);
+                }
+              }
+            }
           }
           
           addAiChatLog(`完全な応答を受信: ${result.length}文字`, 'success');
@@ -908,6 +929,21 @@ export default function DebugPage() {
 
     try {
       const token = await user.getIdToken();
+      addAiChatLog(`🔑 認証トークン取得完了: ${token.substring(0, 20)}...`);
+      
+      const requestBody = {
+        messages: [{
+          id: crypto.randomUUID(),
+          role: 'user',
+          parts: [{ type: 'text', text: aiTestMessage }]
+        }]
+      };
+      
+      addAiChatLog('📤 リクエスト送信:');
+      addAiChatLog(`URL: /api/chat`);
+      addAiChatLog(`Method: POST`);
+      addAiChatLog(`Headers: Content-Type: application/json, Authorization: Bearer ${token.substring(0, 20)}...`);
+      addAiChatLog(`Body: ${JSON.stringify(requestBody, null, 2)}`);
       
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -915,10 +951,12 @@ export default function DebugPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: aiTestMessage }]
-        })
+        body: JSON.stringify(requestBody)
       });
+      
+      addAiChatLog(`📥 レスポンス受信:`);
+      addAiChatLog(`Status: ${response.status} ${response.statusText}`);
+      addAiChatLog(`Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
 
       if (!response.ok) {
         const error = await response.text();
@@ -926,31 +964,96 @@ export default function DebugPage() {
         return;
       }
 
-      addAiChatLog('AIからのストリーミング応答を受信中...');
-      const reader = response.body?.getReader();
+      addAiChatLog('🌊 ストリーミング応答の読み取り開始...');
+      addAiChatLog(`📋 レスポンスボディ情報:`);
+      addAiChatLog(`  • response.body: ${response.body ? 'exists' : 'null'}`);
+      addAiChatLog(`  • response.bodyUsed: ${response.bodyUsed}`);
+      addAiChatLog(`  • Content-Length: ${response.headers.get('content-length') || 'なし'}`);
+      addAiChatLog(`  • Transfer-Encoding: ${response.headers.get('transfer-encoding') || 'なし'}`);
       
-      if (reader) {
-        const decoder = new TextDecoder();
-        let fullResponse = '';
-        const chunks: string[] = [];
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          chunks.push(chunk);
-          fullResponse += chunk;
-          
-          setAiStreamData(prev => [...prev, chunk]);
-          setAiTestResponse(fullResponse);
+      const reader = response.body?.getReader();
+      addAiChatLog(`📖 Reader取得結果: ${reader ? 'success' : 'failed'}`);
+      
+      if (!reader) {
+        addAiChatLog('❌ ReadableStreamが取得できません', 'error');
+        // フォールバック: response.text()で内容を確認
+        try {
+          const fallbackText = await response.text();
+          addAiChatLog(`🔄 フォールバック - response.text(): "${fallbackText}"`);
+        } catch (e) {
+          addAiChatLog(`❌ response.text()も失敗: ${e}`, 'error');
         }
-
-        addAiChatLog(`メッセージテスト完了: ${fullResponse.length}文字の応答を受信`, 'success');
-        addAiChatLog(`受信チャンク数: ${chunks.length}`);
+        return;
       }
+      
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+      let rawChunkCount = 0;
+      let processedChunkCount = 0;
+      const chunks: string[] = [];
+
+      addAiChatLog('🔁 ストリーム読み取りループ開始...');
+      
+      while (true) {
+        addAiChatLog(`📥 reader.read()実行中...`);
+        const result = await reader.read();
+        const { done, value } = result;
+        
+        addAiChatLog(`📊 読み取り結果: done=${done}, value=${value ? `Uint8Array(${value.length})` : 'null'}`);
+        
+        if (done) {
+          addAiChatLog('🏁 ストリーム読み取り完了 (done=true)');
+          break;
+        }
+        
+        if (!value) {
+          addAiChatLog('⚠️  value is null/undefined, continuing...');
+          continue;
+        }
+        
+        rawChunkCount++;
+        const rawChunk = decoder.decode(value);
+        addAiChatLog(`🔍 RAWチャンク #${rawChunkCount} (${rawChunk.length}文字):`);
+        addAiChatLog(`"${rawChunk}"`); // 生のチャンクデータを表示
+        
+        const lines = rawChunk.split('\n');
+        addAiChatLog(`📋 分割された行数: ${lines.length}`);
+        
+        lines.forEach((line, index) => {
+          addAiChatLog(`行 #${index + 1}: "${line}"`);
+          
+          if (line.startsWith('0:')) {
+            addAiChatLog(`✅ AI SDK 5形式検出: ${line}`);
+            const textMatch = line.match(/^0:"(.+)"$/);
+            if (textMatch) {
+              const text = textMatch[1];
+              processedChunkCount++;
+              chunks.push(text);
+              fullResponse += text;
+              setAiStreamData(prev => [...prev, text]);
+              setAiTestResponse(fullResponse);
+              addAiChatLog(`💬 テキスト抽出成功: "${text}"`);
+            } else {
+              addAiChatLog(`⚠️  正規表現マッチ失敗: ${line}`);
+            }
+          } else if (line.trim()) {
+            addAiChatLog(`❓ 未知の形式: "${line}"`);
+          }
+        });
+      }
+
+      addAiChatLog(`🎉 メッセージテスト完了!`);
+      addAiChatLog(`📊 統計:`);
+      addAiChatLog(`  • 受信RAWチャンク数: ${rawChunkCount}`);
+      addAiChatLog(`  • 処理済みチャンク数: ${processedChunkCount}`);
+      addAiChatLog(`  • 最終応答文字数: ${fullResponse.length}`);
+      addAiChatLog(`  • 最終応答内容: "${fullResponse}"`);
     } catch (error) {
-      addAiChatLog(`メッセージテストエラー: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      addAiChatLog(`❌ メッセージテストエラー:`, 'error');
+      addAiChatLog(`エラー詳細: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      if (error instanceof Error && error.stack) {
+        addAiChatLog(`スタックトレース: ${error.stack}`, 'error');
+      }
     } finally {
       setAiTesting(false);
     }
@@ -977,7 +1080,11 @@ export default function DebugPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: 'env check' }]
+          messages: [{
+            id: crypto.randomUUID(),
+            role: 'user',
+            parts: [{ type: 'text', text: 'env check' }]
+          }]
         })
       });
 

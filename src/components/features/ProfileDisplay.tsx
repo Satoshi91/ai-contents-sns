@@ -99,7 +99,7 @@ export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: Profi
           </div>
         </div>
 
-        <div className="flex space-x-6 border-t pt-4">
+        <div className="flex space-x-6">
           <button 
             onClick={handleFollowersClick}
             className="text-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded transition-colors"
@@ -123,7 +123,7 @@ export function ProfileDisplay({ user, works, isOwnProfile, onEditClick }: Profi
       </div>
 
       {/* 作品リスト */}
-      <div className="border-t">
+      <div>
         <div className="px-6 py-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             作品 ({works.length})
