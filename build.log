@@ -1,0 +1,24 @@
+
+> ai-contents-sns@0.1.0 build
+> next build
+
+ ⚠ Installing TypeScript as it was not found while loading "next.config.ts".
+
+Installing devDependencies (npm):
+- typescript
+
+
+up to date in 6s
+
+ ⨯ Failed to load next.config.ts, see more info here https://nextjs.org/docs/messages/next-config-error
+
+> Build error occurred
+[Error: Cannot find module 'typescript'
+Require stack:
+- /home/toppo/dev/canvas/ai-contents-sns/node_modules/next/dist/build/next-config-ts/transpile-config.js
+- /home/toppo/dev/canvas/ai-contents-sns/node_modules/next/dist/server/config.js
+- /home/toppo/dev/canvas/ai-contents-sns/node_modules/next/dist/cli/next-test.js
+- /home/toppo/dev/canvas/ai-contents-sns/node_modules/next/dist/bin/next] {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}

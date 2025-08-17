@@ -5,7 +5,6 @@ import { createOpenAI } from '@ai-sdk/openai';
 const openrouter = createOpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: 'https://openrouter.ai/api/v1',
-  compatibility: 'compatible', // OpenRouterとの互換性を明示
   fetch: async (url, options) => {
     console.log('🌐 [OpenRouter] Request:', {
       url: url.toString(),
